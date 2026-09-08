@@ -1,0 +1,21 @@
+@layer typography {
+  :where(html) {
+    font-family: serif;
+    font-feature-settings: "hkna";
+    font-variant-ligatures: common-ligatures;
+    word-break: normal;
+    line-break: strict;
+    text-align: justify;
+    hanging-punctuation: force-end last;
+    line-height: 2;
+  }
+
+  :where(h1, h2, h3, h4, h5, h6, em) {
+    font-weight: bold;
+  }
+
+  :where(pre, code) {
+    font-variant-ligatures: none;
+    line-height: 1.4;
+  }
+}

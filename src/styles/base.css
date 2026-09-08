@@ -1,0 +1,20 @@
+@layer base {
+  :where(html) {
+    text-size-adjust: none;
+    overflow-wrap: break-word;
+    scroll-behavior: smooth;
+  }
+
+  :where(body) {
+    color: var(--color-text);
+    background-color: var(--color-background);
+  }
+
+  :where(:link) {
+    color: var(--color-link);
+  }
+
+  :where(:visited) {
+    color: var(--color-visited);
+  }
+}

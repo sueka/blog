@@ -1,0 +1,58 @@
+@layer layout {
+  :where(:root) {
+    /* 定数 */
+    --phi: calc((sqrt(5) + 1) / 2);
+    --phi3: calc(sqrt(5) + 2);
+
+    /* 目標 */
+    --font-min: 0.75rem;
+    --font-max: 1rem;
+    --measure-min: calc(29 * var(--font-min));
+    --measure-max: calc(39 * var(--font-max));
+    --margin-min: calc(2 * var(--phi) * var(--font-min));
+    --margin-max: calc(2 * var(--phi3) * var(--font-max));
+
+    /* 可読性のための中間値 */
+    --w1: calc(var(--measure-min) + var(--margin-min));
+    --w2: calc(var(--measure-max) + var(--margin-max));
+    --l: calc(var(--w2) - var(--w1));
+    /* t := (W - W₁) / (W₂ - W₁) */
+    --t: clamp(0, tan(atan2(100vi - var(--w1), var(--l))), 1);
+    --t2: calc(var(--t) * var(--t));
+    --t3: calc(var(--t2) * var(--t));
+
+    /* エルミート基底関数 */
+    --h00: calc(2 * var(--t3) - 3 * var(--t2) + 1);
+    --h10: calc(var(--t3) - 2 * var(--t2) + var(--t));
+    --h01: calc(-2 * var(--t3) + 3 * var(--t2));
+
+    /* 適用値 */
+    --gutter-line: calc(100vi - var(--margin-min));
+    --inline-size: min(
+      var(--gutter-line),
+      var(--measure-min) *
+      var(--h00) +
+      var(--l) *
+      var(--h10) +
+      var(--measure-max) *
+      var(--h01)
+    );
+    --font-size: calc(
+      var(--font-min) *
+      var(--h00) +
+      var(--font-max) *
+      var(--h01)
+    );
+  }
+
+  :where(body) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  :where(#app) {
+    inline-size: max(0px, var(--inline-size));
+    font-size: calc(var(--font-size));
+  }
+}
