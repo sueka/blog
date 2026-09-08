@@ -1,0 +1,19 @@
+@layer theme {
+  :where(:root) {
+    --color-background: #fffefb;
+    --color-text: #675640;
+    --color-link: dodgerblue;
+    --color-visited: darkorchid;
+    --color-code-background: #eae1d6;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :where(:root) {
+      --color-background: #222;
+      --color-text: #acacac;
+      --color-link: dodgerblue;
+      --color-visited: #ba73dd;
+      --color-code-background: #4f4d48;
+    }
+  }
+}
