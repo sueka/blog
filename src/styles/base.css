@@ -1,0 +1,20 @@
+@layer base {
+  html {
+    text-size-adjust: none;
+    overflow-wrap: break-word;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    color: var(--color-text);
+    background-color: var(--color-background);
+  }
+
+  :link {
+    color: var(--color-link);
+  }
+
+  :visited {
+    color: var(--color-visited);
+  }
+}

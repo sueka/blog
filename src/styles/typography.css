@@ -1,0 +1,32 @@
+@layer typography {
+  :root {
+    --sqrt2: sqrt(2);
+  }
+
+  html {
+    font-family: serif;
+    font-feature-settings: "hkna";
+    font-variant-ligatures: common-ligatures;
+    word-break: normal;
+    line-break: strict;
+    text-align: justify;
+    hanging-punctuation: force-end last;
+    line-height: 2;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  em {
+    font-weight: bold;
+  }
+
+  pre,
+  code {
+    font-variant-ligatures: none;
+    line-height: calc(var(--sqrt2));
+  }
+}

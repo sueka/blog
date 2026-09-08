@@ -1,0 +1,11 @@
+@layer sanitize, theme, base, layout, typography, highlight;
+
+@import "sanitize.css" layer(sanitize);
+@import "highlight.js/styles/gradient-light.css" layer(highlight)
+  not (prefers-color-scheme: dark);
+@import "highlight.js/styles/gradient-dark.css" layer(highlight)
+  (prefers-color-scheme: dark);
+@import "./base.css";
+@import "./theme.css";
+@import "./layout.css";
+@import "./typography.css";

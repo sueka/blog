@@ -1,0 +1,12 @@
+.MdxContent {
+  code:not(pre code) {
+    background-color: var(--color-code-background);
+    padding: 0.25em;
+    border-radius: 0.25em;
+  }
+
+  pre code {
+    padding: 0.25em;
+    border-radius: 0.25em;
+  }
+}

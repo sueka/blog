@@ -1,0 +1,9 @@
+# PNPM
+/node_modules/
+
+# Vite
+/dist/
+
+# Velite
+/.velite/
+/public/static/
