@@ -38,8 +38,8 @@ export default defineConfig({
           title: s.string(),
           slug: s.slug('posts'),
           code: s.mdx(),
-          date: s.isodate(),
-          lastmod: s.isodate().optional(),
+          date: s.string().date(),
+          lastmod: s.string().date().optional(),
         })
         .transform((data, ctx) => ({
           ...data,
