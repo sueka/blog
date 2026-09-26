@@ -1,4 +1,16 @@
 .MdxContent {
+  :where(:link, :visited) {
+    text-decoration: none;
+
+    &:where(:hover) {
+      text-decoration: underline dashed 1px;
+    }
+
+    &:where(:active) {
+      text-decoration-style: solid;
+    }
+  }
+
   :where(code:not(pre code)) {
     background-color: var(--color-code-background);
     padding: 0.25em;
