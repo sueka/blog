@@ -1,4 +1,17 @@
 .MdxContent {
+  :link,
+  :visited {
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline dashed 1px;
+    }
+
+    &:active {
+      text-decoration-style: solid;
+    }
+  }
+
   code:not(pre code) {
     background-color: var(--color-code-background);
     padding: 0.25em;
