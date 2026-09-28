@@ -36,7 +36,7 @@ export default defineConfig({
       schema: s
         .object({
           title: s.string(),
-          slug: s.slug('posts'),
+          slug: s.slug('posts'), // NOTE: tag URI の specific として利用されるため、taggingEntity を通して一意。
           code: s.mdx(),
           date: s.string().date(),
           lastmod: s.string().date().optional(),
