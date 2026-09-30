@@ -36,5 +36,8 @@ export default defineConfig(({ mode }) => {
         '#velite': path.resolve(__dirname, '.velite'),
       },
     },
+    define: {
+      __SITE_NAME__: JSON.stringify(siteMeta.name),
+    },
   }
 })

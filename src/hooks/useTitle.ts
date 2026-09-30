@@ -1,10 +1,8 @@
 import { useContext, useEffect } from 'preact/hooks'
 import { TitleContext } from '~/contexts/TitleContext'
 
-const SITE_NAME = 'blog.sueka.dev'
-
 function resolveDocumentTitle(title: string): string {
-  return title === SITE_NAME ? title : `${title} - ${SITE_NAME}`
+  return title === __SITE_NAME__ ? title : `${title} - ${__SITE_NAME__}`
 }
 
 /**
