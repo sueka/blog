@@ -13,9 +13,10 @@ export function createMdxCache(cache: ResourceCache<MDXContent>) {
      */
     loadMdxComponent(code: string) {
       return cache.read(code, () =>
-        run(code, { ...runtime, baseUrl: import.meta.url }).then(
-          (mod) => mod.default,
-        ),
+        run(code, {
+          ...runtime,
+          baseUrl: import.meta.url, // unused
+        }).then((mod) => mod.default),
       )
     },
 

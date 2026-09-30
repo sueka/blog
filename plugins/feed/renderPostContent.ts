@@ -17,7 +17,7 @@ export async function renderPostContent(
 ): Promise<string> {
   const { default: Component } = await run(code, {
     ...runtime,
-    baseUrl: import.meta.url,
+    baseUrl: import.meta.url, // unused
   })
 
   const rawHtml = renderToString(
