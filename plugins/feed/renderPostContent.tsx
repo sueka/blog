@@ -1,3 +1,5 @@
+/** @jsxImportSource preact */
+
 import { run } from '@mdx-js/mdx'
 import * as runtime from 'preact/jsx-runtime'
 import renderToString from 'preact-render-to-string'
