@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
         feed: {
           ...siteMeta,
           title: siteMeta.name,
-          publicUrl: env['VITE_PUBLIC_URL'] ?? fail(),
+          publicUrl: env['VITE_PUBLIC_URL'],
         },
       }),
     ],
