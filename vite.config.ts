@@ -4,7 +4,7 @@ import preact from '@preact/preset-vite'
 import velite from '@velite/plugin-vite'
 import { defineConfig, loadEnv } from 'vite'
 import checker from 'vite-plugin-checker'
-import siteMeta from './meta/site.json'
+import siteMeta from './meta/site.json' with { type: 'json' }
 import { feed } from './plugins/feed/vitePlugin.ts'
 
 export default defineConfig(({ mode }) => {
@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
       velite(),
       checker({}),
       feed({
-        postsFilePath: path.resolve(__dirname, '.velite/posts.json'),
+        postsFilePath: path.resolve(import.meta.dirname, '.velite/posts.json'),
         feed: {
           ...siteMeta,
           title: siteMeta.name,
@@ -33,8 +33,8 @@ export default defineConfig(({ mode }) => {
     ],
     resolve: {
       alias: {
-        '~': path.resolve(__dirname, 'src'),
-        '#velite': path.resolve(__dirname, '.velite'),
+        '~': path.resolve(import.meta.dirname, 'src'),
+        '#velite': path.resolve(import.meta.dirname, '.velite'),
       },
     },
     define: {

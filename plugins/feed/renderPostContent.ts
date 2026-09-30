@@ -1,15 +1,11 @@
-/** @jsxImportSource preact */
-
 import { run } from '@mdx-js/mdx'
+import { h } from 'preact'
 import * as runtime from 'preact/jsx-runtime'
 import renderToString from 'preact-render-to-string'
 import truncate from 'truncate-html'
 
 export interface RenderOptions {
   maxLength?: number
-
-  // NOTE: Vite の既定の設定バンドルローダー (inject-file-scope-variables) は tsx ファイルを対象に取らないため、import.meta.url は ts ファイルから渡す必要がある。
-  baseUrl?: string
 }
 
 /**
@@ -17,20 +13,20 @@ export interface RenderOptions {
  */
 export async function renderPostContent(
   code: string,
-  { maxLength, baseUrl }: RenderOptions,
+  { maxLength }: RenderOptions,
 ): Promise<string> {
   const { default: Component } = await run(code, {
     ...runtime,
-    baseUrl,
+    baseUrl: import.meta.url,
   })
 
   const rawHtml = renderToString(
-    <Component
-      components={{
-        Center: ({ children }) => <div>{children}</div>,
-        InternalLink: ({ children }) => <span>{children}</span>,
-      }}
-    />,
+    h(Component, {
+      components: {
+        Center: ({ children }) => h('div', null, children),
+        InternalLink: ({ children }) => h('span', null, children),
+      },
+    }),
   )
 
   return truncate(rawHtml, maxLength, { stripTags: true, ellipsis: '…' })

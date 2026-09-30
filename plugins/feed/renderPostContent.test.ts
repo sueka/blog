@@ -16,7 +16,6 @@ describe('renderPostContent', () => {
 
     const html = await renderPostContent(post.code, {
       maxLength: 200,
-      baseUrl: import.meta.url,
     })
 
     expect(html).toContain('Hello, world!')

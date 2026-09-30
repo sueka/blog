@@ -1,5 +1,5 @@
-import type { PostEntry } from './generateAtomFeed'
-import { renderPostContent } from './renderPostContent'
+import type { PostEntry } from './generateAtomFeed.ts'
+import { renderPostContent } from './renderPostContent.ts'
 
 interface Post {
   title: string
@@ -19,7 +19,6 @@ export async function loadPosts(postsFilePath: string): Promise<PostEntry[]> {
     posts.map(async (p) => {
       const excerpt = await renderPostContent(p.code, {
         maxLength: 200,
-        baseUrl: import.meta.url,
       })
 
       return {
