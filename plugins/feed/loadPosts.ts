@@ -1,5 +1,5 @@
-import type { PostEntry } from './generateAtomFeed'
-import { renderPostContent } from './renderPostContent'
+import type { PostEntry } from './generateAtomFeed.ts'
+import { renderPostContent } from './renderPostContent.ts'
 
 interface Post {
   title: string

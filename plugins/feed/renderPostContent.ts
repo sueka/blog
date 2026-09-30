@@ -1,6 +1,5 @@
-/** @jsxImportSource preact */
-
 import { run } from '@mdx-js/mdx'
+import { h } from 'preact'
 import * as runtime from 'preact/jsx-runtime'
 import renderToString from 'preact-render-to-string'
 import truncate from 'truncate-html'
@@ -19,12 +18,12 @@ export async function renderPostContent(
   const { default: Component } = await run(code, runtime)
 
   const rawHtml = renderToString(
-    <Component
-      components={{
-        Center: ({ children }) => <div>{children}</div>,
-        InternalLink: ({ children }) => <span>{children}</span>,
-      }}
-    />,
+    h(Component, {
+      components: {
+        Center: ({ children }) => h('div', null, children),
+        InternalLink: ({ children }) => h('span', null, children),
+      },
+    }),
   )
 
   return truncate(rawHtml, maxLength, { stripTags: true, ellipsis: '…' })
