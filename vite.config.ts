@@ -20,7 +20,11 @@ export default defineConfig(({ mode }) => {
         },
       }),
       velite(),
-      checker({}),
+      checker({
+        biome: {
+          command: 'check',
+        },
+      }),
       feed({
         postsFilePath: path.resolve(import.meta.dirname, '.velite/posts.json'),
         feed: {
