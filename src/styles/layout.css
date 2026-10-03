@@ -55,4 +55,10 @@
     inline-size: max(0px, var(--inline-size));
     font-size: calc(var(--font-size));
   }
+
+  :where(body) {
+    background-image: url("./noise.svg");
+    background-blend-mode: hard-light;
+    background-repeat: round;
+  }
 }
