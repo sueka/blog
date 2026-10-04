@@ -1,0 +1,11 @@
+:where(:root) {
+  --phi-inv: calc((sqrt(5) - 1) / 2);
+}
+
+.Cover {
+  inline-size: auto;
+  block-size: auto;
+  max-inline-size: 100%;
+  max-block-size: calc((var(--phi-inv) * 100vb));
+  object-fit: contain;
+}

@@ -13,6 +13,7 @@ export default defineConfig({
       pattern: '*.mdx',
       schema: s
         .object({
+          cover: s.image().optional(),
           title: s.string(),
           slug: s.slug().optional(),
           code: s.mdx(),
