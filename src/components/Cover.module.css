@@ -9,3 +9,11 @@
   max-block-size: calc((var(--phi-inv) * 100vb));
   object-fit: contain;
 }
+
+:where(html) {
+  scroll-snap-type: block proximity;
+}
+
+.BodyStart.SnapOk {
+  scroll-snap-align: start;
+}
