@@ -1,4 +1,5 @@
 import { Suspense } from 'preact/compat'
+import { useRef } from 'preact/hooks'
 import type { Page } from '#velite'
 import { useTitle } from '~/hooks/useTitle'
 import { Cover } from './Cover'
@@ -15,12 +16,16 @@ interface PageViewProps {
  * Velite page オブジェクトをレンダリングする.
  */
 export const PageView: React.FC<PageViewProps> = ({ page }) => {
+  const bodyRef = useRef<HTMLDivElement>(null)
+
   useTitle(page.title)
 
   return (
     <div class={classes['PageView']}>
-      {page.cover != null && <Cover cover={page.cover} />}
-      <div class={classes['PageBody']}>
+      {page.cover != null && (
+        <Cover cover={page.cover} bodyStartRef={bodyRef} />
+      )}
+      <div ref={bodyRef} class={classes['PageBody']}>
         <h1>{page.title}</h1>
         <Suspense fallback={<p>Loading…</p>}>
           <MdxContent
