@@ -2,13 +2,10 @@
   :link,
   :visited {
     text-decoration: none;
+    border-bottom: 1px dashed;
 
     &:hover {
-      text-decoration: underline dashed 1px;
-    }
-
-    &:active {
-      text-decoration-style: solid;
+      border-bottom-style: solid;
     }
   }
 
