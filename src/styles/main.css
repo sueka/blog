@@ -1,6 +1,7 @@
-@layer sanitize, theme, base, typography, highlight;
+@layer sanitize, open-props, theme, base, typography, highlight;
 
 @import "sanitize.css" layer(sanitize);
+@import "open-props/style" layer(open-props);
 @import "highlight.js/styles/gradient-light.css" layer(highlight)
   not (prefers-color-scheme: dark);
 @import "highlight.js/styles/gradient-dark.css" layer(highlight)

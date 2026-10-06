@@ -16,6 +16,7 @@
     "@preact/signals": "^2.11.2",
     "clsx": "^2.1.1",
     "highlight.js": "^11.12.0",
+    "open-props": "^1.7.23",
     "preact": "^10.29.8",
     "preact-iso": "^2.12.2",
     "sanitize.css": "^13.0.0"
