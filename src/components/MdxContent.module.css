@@ -1,13 +1,10 @@
 .MdxContent {
   :where(:link, :visited) {
     text-decoration: none;
+    border-bottom: 1px dashed;
 
     &:where(:hover) {
-      text-decoration: underline dashed 1px;
-    }
-
-    &:where(:active) {
-      text-decoration-style: solid;
+      border-bottom-style: solid;
     }
   }
 
