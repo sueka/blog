@@ -1,19 +1,19 @@
 @layer theme {
   :where(:root) {
-    --color-background: #fffefb;
-    --color-text: #675640;
-    --color-link: dodgerblue;
-    --color-visited: darkorchid;
-    --color-code-background: #eae1d6;
+    --color-background: var(--sand-1);
+    --color-text: var(--sand-9);
+    --color-link: var(--blue-9);
+    --color-visited: var(--purple-8);
+    --color-code-background: var(--stone-2);
   }
 
   @media (prefers-color-scheme: dark) {
     :where(:root) {
-      --color-background: #222;
-      --color-text: #acacac;
-      --color-link: dodgerblue;
-      --color-visited: #ba73dd;
-      --color-code-background: #4f4d48;
+      --color-background: var(--sand-11);
+      --color-text: var(--sand-1);
+      --color-link: var(--blue-5);
+      --color-visited: var(--purple-5);
+      --color-code-background: var(--stone-10);
     }
   }
 }
