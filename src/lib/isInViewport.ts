@@ -4,7 +4,7 @@ export function isInViewport(element: Element): boolean {
   return (
     rect.bottom > 0 &&
     rect.right > 0 &&
-    rect.top < window.innerHeight &&
-    rect.left < window.innerWidth
+    rect.top < document.documentElement.clientHeight &&
+    rect.left < document.documentElement.clientWidth
   )
 }
