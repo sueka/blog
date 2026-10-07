@@ -1,9 +1,9 @@
 @layer theme {
   :where(:root) {
-    --color-background: var(--sand-1);
-    --color-text: var(--sand-9);
-    --color-link: var(--blue-9);
-    --color-visited: var(--purple-8);
+    --color-background: var(--sand-0);
+    --color-text: var(--sand-8);
+    --color-link: var(--blue-8);
+    --color-visited: var(--purple-7);
     --color-code-background: var(--stone-2);
   }
 
