@@ -17,5 +17,7 @@
   :where(pre code) {
     padding: 0.25em;
     border-radius: 0.25em;
+    white-space: break-spaces;
+    font-size: calc(39 / 44 * 100%);
   }
 }
