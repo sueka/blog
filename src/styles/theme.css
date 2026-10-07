@@ -1,10 +1,16 @@
 @layer theme {
   :where(:root) {
+    --phi-inv: calc((sqrt(5) - 1) / 2);
+    --phi2-inv: calc((3 - sqrt(5)) / 2);
+
     --color-background: var(--sand-0);
     --color-text: var(--sand-8);
     --color-link: var(--blue-8);
     --color-visited: var(--purple-7);
-    --color-code-background: var(--stone-2);
+
+    /* <mark> の子孫の <code> に対して、--stone-4 は φ⁻²、--yellow-5 は (1−φ⁻²) φ⁻¹ = φ⁻² 寄与する。 */
+    --color-code-background: rgb(from var(--stone-4) r g b / var(--phi2-inv));
+    --color-mark: rgb(from var(--yellow-5) r g b / var(--phi-inv));
   }
 
   @media (prefers-color-scheme: dark) {
@@ -13,7 +19,11 @@
       --color-text: var(--sand-1);
       --color-link: var(--blue-5);
       --color-visited: var(--purple-5);
-      --color-code-background: var(--stone-10);
+      --color-code-background: rgb(
+        from var(--stone-10) r g b /
+        var(--phi2-inv)
+      );
+      --color-mark: rgb(from var(--teal-10) r g b / var(--phi-inv));
     }
   }
 }

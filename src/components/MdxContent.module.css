@@ -20,4 +20,9 @@
     white-space: break-spaces;
     font-size: calc(39 / 44 * 100%);
   }
+
+  :where(mark) {
+    color: currentColor;
+    background-color: var(--color-mark);
+  }
 }
