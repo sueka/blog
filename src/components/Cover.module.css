@@ -7,6 +7,7 @@
   block-size: auto;
   max-inline-size: 100%;
   max-block-size: calc((var(--phi-inv) * 100svb));
+  margin-inline: auto;
   object-fit: contain;
 }
 
