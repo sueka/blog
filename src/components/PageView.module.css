@@ -1,6 +1,7 @@
 :where(:root) {
   /* 定数 */
   --phi: calc((sqrt(5) + 1) / 2);
+  --phi2: calc((sqrt(5) + 3) / 2);
   --phi3: calc(sqrt(5) + 2);
 
   /* 目標 */
@@ -51,7 +52,9 @@
 }
 
 .TextBlock {
-  min-block-size: 100vb;
+  min-block-size: calc(100vb - var(--phi2) * 1em);
   inline-size: max(0px, var(--inline-size));
   font-size: calc(var(--font-size));
+  margin-block-end: calc(var(--phi2) * 1em);
+  margin-inline: auto;
 }
