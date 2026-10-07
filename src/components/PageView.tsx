@@ -21,11 +21,11 @@ export const PageView: React.FC<PageViewProps> = ({ page }) => {
   useTitle(page.title)
 
   return (
-    <div class={classes['PageView']}>
+    <main class={classes['PageView']}>
       {page.cover != null && (
         <Cover cover={page.cover} bodyStartRef={bodyRef} />
       )}
-      <div ref={bodyRef} class={classes['PageBody']}>
+      <div ref={bodyRef} class={classes['TextBlock']}>
         <h1>{page.title}</h1>
         <Suspense fallback={<p>Loading…</p>}>
           <MdxContent
@@ -37,6 +37,6 @@ export const PageView: React.FC<PageViewProps> = ({ page }) => {
           />
         </Suspense>
       </div>
-    </div>
+    </main>
   )
 }

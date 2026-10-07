@@ -50,7 +50,7 @@
   align-items: center;
 }
 
-.PageBody {
+.TextBlock {
   min-block-size: 100vb;
   inline-size: max(0px, var(--inline-size));
   font-size: calc(var(--font-size));

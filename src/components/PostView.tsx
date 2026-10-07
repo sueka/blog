@@ -18,12 +18,12 @@ export const PostView: React.FC<PostViewProps> = ({ post }) => {
   useTitle(post.title)
 
   return (
-    <div class={classes['PageView']}>
-      <div
-        class={classes['PageBody']}
-        itemscope
-        itemtype="https://schema.org/BlogPosting"
-      >
+    <main
+      class={classes['PageView']}
+      itemscope
+      itemtype="https://schema.org/BlogPosting"
+    >
+      <div class={classes['TextBlock']}>
         <h1 itemprop="headline">{post.title}</h1>
         <FrontMatter date={post.date} />
         <Suspense fallback={<p>Loading…</p>}>
@@ -41,6 +41,6 @@ export const PostView: React.FC<PostViewProps> = ({ post }) => {
           />
         </Suspense>
       </div>
-    </div>
+    </main>
   )
 }
