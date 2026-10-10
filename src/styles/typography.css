@@ -7,6 +7,7 @@
     font-family: serif;
     font-feature-settings: "hkna";
     font-variant-ligatures: common-ligatures;
+    overflow-wrap: break-word;
     word-break: normal;
     line-break: strict;
     text-align: justify;

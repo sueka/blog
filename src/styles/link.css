@@ -1,0 +1,19 @@
+@layer link {
+  :link {
+    color: var(--color-link);
+  }
+
+  :visited {
+    color: var(--color-visited);
+  }
+
+  :link,
+  :visited {
+    text-decoration: none;
+    border-bottom: 1px dashed;
+
+    &:hover {
+      border-bottom-style: solid;
+    }
+  }
+}

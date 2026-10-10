@@ -9,7 +9,7 @@
     --color-visited: var(--purple-7);
 
     /* <mark> の子孫の <code> に対して、--stone-4 は φ⁻²、--yellow-5 は (1−φ⁻²) φ⁻¹ = φ⁻² 寄与する。 */
-    --color-code-background: rgb(from var(--stone-4) r g b / var(--phi2-inv));
+    --color-code: rgb(from var(--stone-4) r g b / var(--phi2-inv));
     --color-mark: rgb(from var(--yellow-5) r g b / var(--phi-inv));
   }
 
@@ -19,10 +19,7 @@
       --color-text: var(--sand-1);
       --color-link: var(--blue-5);
       --color-visited: var(--purple-5);
-      --color-code-background: rgb(
-        from var(--stone-10) r g b /
-        var(--phi2-inv)
-      );
+      --color-code: rgb(from var(--stone-10) r g b / var(--phi2-inv));
       --color-mark: rgb(from var(--teal-10) r g b / var(--phi-inv));
     }
   }

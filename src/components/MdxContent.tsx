@@ -1,8 +1,6 @@
-import { clsx } from 'clsx/lite'
 import type { MDXProps } from 'mdx/types'
 import type { HTMLAttributes } from 'preact'
 import { mdxCache } from '~/mdxCache'
-import classes from './MdxContent.module.css'
 
 interface MdxContentProps {
   code: string
@@ -22,7 +20,7 @@ export const MdxContent: React.FC<MdxContentProps & MDXProps> = ({
   const Component = mdxCache.loadMdxComponent(code)
 
   return (
-    <div class={clsx(classes['MdxContent'], rootClass)} {...rootProps}>
+    <div class={rootClass} {...rootProps}>
       <Component {...props} />
     </div>
   )
