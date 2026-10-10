@@ -1,12 +1,12 @@
 @layer sanitize,
   open-props,
+  highlight,
   theme,
   base,
   text,
   link,
   code,
-  typography,
-  highlight;
+  typography;
 
 @import "sanitize.css" layer(sanitize);
 @import "open-props/style" layer(open-props);
