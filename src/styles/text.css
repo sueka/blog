@@ -3,4 +3,8 @@
     color: currentColor;
     background-color: var(--color-mark);
   }
+
+  strong {
+    color: var(--color-emphasis);
+  }
 }
