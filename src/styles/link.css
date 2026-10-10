@@ -1,0 +1,18 @@
+@layer link {
+  :where(:link) {
+    color: var(--color-link);
+  }
+
+  :where(:visited) {
+    color: var(--color-visited);
+  }
+
+  :where(:link, :visited) {
+    text-decoration: none;
+    border-bottom: 1px dashed;
+
+    &:where(:hover) {
+      border-bottom-style: solid;
+    }
+  }
+}
