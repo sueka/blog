@@ -5,6 +5,7 @@
 
     --color-background: var(--sand-0);
     --color-text: var(--sand-8);
+    --color-emphasis: var(--sand-10);
     --color-link: var(--blue-8);
     --color-visited: var(--purple-7);
 
@@ -17,6 +18,7 @@
     :where(:root) {
       --color-background: var(--sand-11);
       --color-text: var(--sand-1);
+      --color-emphasis: var(--sand-0);
       --color-link: var(--blue-5);
       --color-visited: var(--purple-5);
       --color-code: rgb(from var(--stone-10) r g b / var(--phi2-inv));
