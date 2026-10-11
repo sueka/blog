@@ -1,0 +1,79 @@
+---
+title: 本文のフォントサイズについて
+slug: body-font-size
+date: 2026-10-12
+---
+
+せっかく手間をかけて構築したので、<InternalLink to="./Blog Moves.mdx">移転</InternalLink>後の新システムのことを話したい。今回は**本文のフォントサイズ**について。このブログの本文の寸法は、文庫本を範にしていて、次の条件を満たすように調整している:
+
+- ビューポートの幅が十分広いときは、左右に *φ³ em の余白*を取り、*1 rem の文字*を*1行あたり39文字*表示する。
+- それ以降、ビューポートの幅が増加しても、フォントサイズと行あたり文字数は変化せず、*余白が増加*する。
+- ビューポートの幅がそれなりに狭いときは、左右に *φ em の余白*を取り、*0.75 rem の文字*を*1行あたり29文字*表示する。
+- それ以降、ビューポートの幅が減少しても、フォントサイズと余白は変化せず、*行あたり文字数が減少*する。
+
+これを実現する CSS:
+
+~~~css
+:root {
+  /* 定数 */
+  --phi: calc((sqrt(5) + 1) / 2);
+  --phi3: calc(sqrt(5) + 2);
+
+  /* 目標 */
+  --font-min: 0.75rem;
+  --font-max: 1rem;
+  --line-length-min: calc(29 * var(--font-min));
+  --line-length-max: calc(39 * var(--font-max));
+  --margin-min: calc(2 * var(--phi) * var(--font-min));
+  --margin-max: calc(2 * var(--phi3) * var(--font-max));
+
+  /* 可読性のための中間値 */
+  --w1: calc(var(--line-length-min) + var(--margin-min));
+  --w2: calc(var(--line-length-max) + var(--margin-max));
+  --l: calc(var(--w2) - var(--w1));
+  /* t := (W - W₁) / (W₂ - W₁) */
+  --t: clamp(0, tan(atan2(100vi - var(--w1), var(--l))), 1);
+  --t2: calc(var(--t) * var(--t));
+  --t3: calc(var(--t2) * var(--t));
+
+  /* エルミート基底関数 */
+  --h00: calc(2 * var(--t3) - 3 * var(--t2) + 1);
+  --h10: calc(var(--t3) - 2 * var(--t2) + var(--t));
+  --h01: calc(-2 * var(--t3) + 3 * var(--t2));
+
+  /* 適用値 */
+  --gutter-line: calc(100vi - var(--margin-min));
+  --inline-size: min(
+    var(--gutter-line),
+    var(--line-length-min) *
+    var(--h00) +
+    var(--l) *
+    var(--h10) +
+    var(--line-length-max) *
+    var(--h01)
+  );
+  --font-size: calc(
+    var(--font-min) *
+    var(--h00) +
+    var(--font-max) *
+    var(--h01)
+  );
+}
+
+.TextBlock {
+  min-block-size: 100vb;
+  inline-size: max(0px, var(--inline-size));
+  font-size: calc(var(--font-size));
+  margin-inline: auto;
+}
+~~~
+
+とくに最後まで苦慮したのが t := (W - W₁) / (W₂ - W₁) の計算だった。W はビューポートの幅なので単位つき、t は冪乗して使うので単位なしだが、CSS Values and Units Module Level 3 では、単位つきの値どうしの除算は規定されていなかった。Level 4 で規定されたが、ブラウザの対応は揃っていない[^caniuse-typed-arithmetic]。
+
+[^caniuse-typed-arithmetic]: https://caniuse.com/mdn-css_types_calc_typed_division_produces_unitless_number
+
+苦慮の結果は次のとおり。単位つき除算ができないブラウザも、`atan2()` で \<dimension\> どうしのアークタンジェント2を計算することはできるので、これの正接を取れば、実質的に、単位つき除算が実現されるということらしい。なんじゃそりゃ:
+
+~~~css
+--t: clamp(0, tan(atan2(100vi - var(--w1), var(--l))), 1);
+~~~

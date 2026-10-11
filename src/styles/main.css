@@ -3,6 +3,7 @@
   highlight,
   base,
   theme,
+  list,
   text,
   link,
   code,
@@ -16,6 +17,7 @@
   (prefers-color-scheme: dark);
 @import "./base.css";
 @import "./theme.css";
+@import "./list.css";
 @import "./text.css";
 @import "./link.css";
 @import "./code.css";
