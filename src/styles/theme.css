@@ -1,8 +1,5 @@
 @layer theme {
   :root {
-    --phi-inv: calc((sqrt(5) - 1) / 2);
-    --phi2-inv: calc((3 - sqrt(5)) / 2);
-
     --color-background: var(--sand-0);
     --color-text: var(--sand-8);
     --color-emphasis: var(--sand-10);

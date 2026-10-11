@@ -1,8 +1,8 @@
 @layer sanitize,
   open-props,
   highlight,
-  theme,
   base,
+  theme,
   text,
   link,
   code,
@@ -14,8 +14,8 @@
   not (prefers-color-scheme: dark);
 @import "highlight.js/styles/gradient-dark.css" layer(highlight)
   (prefers-color-scheme: dark);
-@import "./theme.css";
 @import "./base.css";
+@import "./theme.css";
 @import "./text.css";
 @import "./link.css";
 @import "./code.css";

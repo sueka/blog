@@ -1,8 +1,4 @@
 @layer typography {
-  :root {
-    --sqrt2: sqrt(2);
-  }
-
   html {
     font-family: serif;
     font-feature-settings: "hkna";

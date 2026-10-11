@@ -1,4 +1,13 @@
 @layer base {
+  :root {
+    --phi: calc((sqrt(5) + 1) / 2);
+    --phi2: calc((sqrt(5) + 3) / 2);
+    --phi3: calc(sqrt(5) + 2);
+    --phi-inv: calc((sqrt(5) - 1) / 2);
+    --phi2-inv: calc((3 - sqrt(5)) / 2);
+    --sqrt2: sqrt(2);
+  }
+
   html {
     text-size-adjust: none;
     scroll-behavior: smooth;
