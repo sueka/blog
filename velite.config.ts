@@ -1,11 +1,14 @@
 import { fail } from 'node:assert'
 import path from 'node:path'
 import rehypeHighlight from 'rehype-highlight'
+import rehypeKatex from 'rehype-katex'
+import remarkMath from 'remark-math'
 import { defineConfig, s } from 'velite'
 
 export default defineConfig({
   mdx: {
-    rehypePlugins: [rehypeHighlight],
+    rehypePlugins: [rehypeHighlight, rehypeKatex],
+    remarkPlugins: [remarkMath],
   },
   collections: {
     pages: {

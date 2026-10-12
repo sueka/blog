@@ -1,6 +1,7 @@
 @layer sanitize,
   open-props,
   highlight,
+  katex,
   base,
   theme,
   list,
@@ -15,6 +16,7 @@
   not (prefers-color-scheme: dark);
 @import "highlight.js/styles/gradient-dark.css" layer(highlight)
   (prefers-color-scheme: dark);
+@import "katex/dist/katex.css" layer(katex);
 @import "./base.css";
 @import "./theme.css";
 @import "./list.css";

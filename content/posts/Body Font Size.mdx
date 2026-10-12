@@ -68,7 +68,7 @@ date: 2026-10-12
 }
 ~~~
 
-とくに最後まで苦慮したのが t := (W - W₁) / (W₂ - W₁) の計算だった。W はビューポートの幅なので単位つき、t は冪乗して使うので単位なしだが、CSS Values and Units Module Level 3 では、単位つきの値どうしの除算は規定されていなかった。Level 4 で規定されたが、ブラウザの対応は揃っていない[^caniuse-typed-arithmetic]。
+とくに最後まで苦慮したのが $ t \coloneqq \frac{W - W_1}{W_2 - W_1} $ の計算だった。$ W $ はビューポートの幅なので単位つき、$ t $ は冪乗して使うので単位なしだが、CSS Values and Units Module Level 3 では、単位つきの値どうしの除算は規定されていなかった。Level 4 で規定されたが、ブラウザの対応は揃っていない[^caniuse-typed-arithmetic]。
 
 [^caniuse-typed-arithmetic]: https://caniuse.com/mdn-css_types_calc_typed_division_produces_unitless_number
 

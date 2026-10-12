@@ -10,6 +10,8 @@ import { fail } from './lib/fail.ts'
 import './styles/main.css'
 
 if (typeof window !== 'undefined') {
+  void import('katex/contrib/copy-tex/copy-tex.ts')
+
   hydrate(
     <StrictMode>
       <App />
