@@ -1,3 +1,4 @@
+import type { URL } from 'node:url'
 import type { PostEntry } from './generateAtomFeed.ts'
 import { renderPostContent } from './renderPostContent.ts'
 
@@ -10,9 +11,9 @@ interface Post {
   permalink: string
 }
 
-export async function loadPosts(postsFilePath: string): Promise<PostEntry[]> {
+export async function loadPosts(postsFileUrl: URL): Promise<PostEntry[]> {
   const posts: Post[] = (
-    await import(postsFilePath, { with: { type: 'json' } })
+    await import(postsFileUrl.href, { with: { type: 'json' } })
   ).default
 
   return Promise.all(

@@ -1,10 +1,11 @@
 import { fail } from 'node:assert'
+import type { URL } from 'node:url'
 import { mergeConfig, type Plugin } from 'vite'
 import { generateAtomFeed } from './generateAtomFeed.ts'
 import { loadPosts } from './loadPosts.ts'
 
 export interface FeedPluginOptions {
-  postsFilePath: string
+  postsFileUrl: URL
   feed: {
     publicUrl?: string | undefined
     title: string
@@ -21,7 +22,7 @@ export interface FeedPluginOptions {
  * Post オブジェクトを収集して Atom フィードを生成する Vite プラグイン.
  */
 export function feed({
-  postsFilePath,
+  postsFileUrl,
   feed: feedOptions,
 }: FeedPluginOptions): Plugin {
   let resolvedPublicUrl: string
@@ -32,7 +33,7 @@ export function feed({
     config(config) {
       return mergeConfig(config, {
         optimizeDeps: {
-          exclude: [postsFilePath],
+          exclude: [postsFileUrl],
         },
       })
     },
@@ -49,7 +50,7 @@ export function feed({
       })
     },
     async generateBundle() {
-      const posts = await loadPosts(postsFilePath)
+      const posts = await loadPosts(postsFileUrl)
       const xml = generateAtomFeed(posts, {
         ...feedOptions,
         publicUrl: resolvedPublicUrl,

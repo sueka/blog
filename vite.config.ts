@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import preact from '@preact/preset-vite'
 import velite from '@velite/plugin-vite'
 import { defineConfig, loadEnv } from 'vite'
@@ -22,7 +23,9 @@ export default defineConfig(({ mode }) => {
       velite(),
       checker({}),
       feed({
-        postsFilePath: path.resolve(import.meta.dirname, '.velite/posts.json'),
+        postsFileUrl: pathToFileURL(
+          path.resolve(import.meta.dirname, '.velite/posts.json'),
+        ),
         feed: {
           ...siteMeta,
           title: siteMeta.name,
