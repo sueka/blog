@@ -5,9 +5,17 @@ import rehypeKatex from 'rehype-katex'
 import remarkMath from 'remark-math'
 import { defineConfig, s } from 'velite'
 
+const rehypeKatexPerFile: typeof rehypeKatex =
+  (options = {}) =>
+  (tree, file) =>
+    rehypeKatex({
+      ...options,
+      macros: { ...options?.macros },
+    })(tree, file)
+
 export default defineConfig({
   mdx: {
-    rehypePlugins: [rehypeHighlight, rehypeKatex],
+    rehypePlugins: [rehypeHighlight, rehypeKatexPerFile],
     remarkPlugins: [remarkMath],
   },
   collections: {
