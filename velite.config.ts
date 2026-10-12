@@ -2,6 +2,9 @@ import { fail } from 'node:assert'
 import path from 'node:path'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeKatex from 'rehype-katex'
+import remarkDefinitionList, {
+  defListHastHandlers,
+} from 'remark-definition-list'
 import remarkMath from 'remark-math'
 import { defineConfig, s } from 'velite'
 
@@ -16,7 +19,8 @@ const rehypeKatexPerFile: typeof rehypeKatex =
 export default defineConfig({
   mdx: {
     rehypePlugins: [rehypeHighlight, rehypeKatexPerFile],
-    remarkPlugins: [remarkMath],
+    remarkPlugins: [remarkDefinitionList, remarkMath],
+    remarkRehypeOptions: { handlers: { ...defListHastHandlers } },
   },
   collections: {
     pages: {
