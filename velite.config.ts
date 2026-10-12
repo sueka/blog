@@ -26,12 +26,15 @@ export default defineConfig({
           ...data,
           type: 'Page' as const,
           permalink: `/${data.slug ?? ''}`,
-          sourcePath: path.join(
-            '/',
-            path
-              .relative(ctx.meta.config.root, ctx.meta.history[0] ?? fail())
-              .replaceAll(path.sep, '/'),
-          ),
+          sourcePath: path
+            .join(
+              '/',
+              path.relative(
+                ctx.meta.config.root,
+                ctx.meta.history[0] ?? fail(),
+              ),
+            )
+            .replaceAll(path.sep, '/'),
         })),
     },
     posts: {
@@ -49,12 +52,15 @@ export default defineConfig({
           ...data,
           type: 'Post' as const,
           permalink: `/posts/${data.slug}`,
-          sourcePath: path.join(
-            '/',
-            path
-              .relative(ctx.meta.config.root, ctx.meta.history[0] ?? fail())
-              .replaceAll(path.sep, '/'),
-          ),
+          sourcePath: path
+            .join(
+              '/',
+              path.relative(
+                ctx.meta.config.root,
+                ctx.meta.history[0] ?? fail(),
+              ),
+            )
+            .replaceAll(path.sep, '/'),
         })),
     },
   },
