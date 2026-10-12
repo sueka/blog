@@ -11,4 +11,8 @@
     white-space: break-spaces;
     font-size: calc(39 / 44 * 100%);
   }
+
+  pre {
+    text-align: start;
+  }
 }
