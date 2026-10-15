@@ -7,14 +7,4 @@
     --phi2-inv: calc((3 - sqrt(5)) / 2);
     --sqrt2: sqrt(2);
   }
-
-  html {
-    text-size-adjust: none;
-    scroll-behavior: smooth;
-  }
-
-  body {
-    color: var(--color-text);
-    background-color: var(--color-background);
-  }
 }

@@ -1,14 +1,4 @@
-@layer sanitize,
-  open-props,
-  highlight,
-  katex,
-  base,
-  theme,
-  list,
-  text,
-  link,
-  code,
-  typography;
+@layer sanitize, open-props, highlight, katex, base, theme, style;
 
 @import "sanitize.css" layer(sanitize);
 @import "open-props/style" layer(open-props);
@@ -19,8 +9,4 @@
 @import "katex/dist/katex.css" layer(katex);
 @import "./base.css";
 @import "./theme.css";
-@import "./list.css";
-@import "./text.css";
-@import "./link.css";
-@import "./code.css";
-@import "./typography.css";
+@import "./style.css";
