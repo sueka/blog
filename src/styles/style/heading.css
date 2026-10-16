@@ -5,6 +5,32 @@
   h4,
   h5,
   h6 {
+    margin-block: calc(var(--phi) * 1em) 1em;
     font-weight: bold;
+    line-height: var(--phi);
+  }
+
+  h1 {
+    font-size: calc(pow(var(--phi), 5 / 4) * 100%);
+  }
+
+  h2 {
+    font-size: calc(pow(var(--phi), 4 / 4) * 100%);
+  }
+
+  h3 {
+    font-size: calc(pow(var(--phi), 3 / 4) * 100%);
+  }
+
+  h4 {
+    font-size: calc(pow(var(--phi), 2 / 4) * 100%);
+  }
+
+  h5 {
+    font-size: calc(pow(var(--phi), 1 / 4) * 100%);
+  }
+
+  h6 {
+    font-size: calc(pow(var(--phi), 0 / 4) * 100%);
   }
 }
