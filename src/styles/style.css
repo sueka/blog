@@ -1,5 +1,6 @@
 @layer style,
   style.root,
+  style.paragraph,
   style.list,
   style.text,
   style.link,
@@ -7,6 +8,7 @@
   style.heading;
 
 @import "./style/root.css" layer(style);
+@import "./style/paragraph.css" layer(style);
 @import "./style/list.css" layer(style);
 @import "./style/text.css" layer(style);
 @import "./style/link.css" layer(style);
