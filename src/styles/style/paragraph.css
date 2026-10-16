@@ -1,0 +1,9 @@
+@layer paragraph {
+  p {
+    text-indent: 1em;
+  }
+
+  li p {
+    text-indent: revert-layer;
+  }
+}
