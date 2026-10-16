@@ -1,4 +1,4 @@
-@layer typography {
+@layer root {
   html {
     font-family: serif;
     font-feature-settings: "hkna";
@@ -9,20 +9,5 @@
     text-align: justify;
     hanging-punctuation: force-end last;
     line-height: 2;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-weight: bold;
-  }
-
-  pre,
-  code {
-    font-variant-ligatures: none;
-    line-height: calc(var(--sqrt2));
   }
 }

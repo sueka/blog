@@ -1,4 +1,10 @@
 @layer code {
+  pre,
+  code {
+    font-variant-ligatures: none;
+    line-height: calc(var(--sqrt2));
+  }
+
   code:not(pre code) {
     background-color: var(--color-code);
     padding: 0.25em;

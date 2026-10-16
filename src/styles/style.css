@@ -1,10 +1,17 @@
-@layer style, style.list, style.text, style.link, style.code, style.typography;
+@layer style,
+  style.root,
+  style.list,
+  style.text,
+  style.link,
+  style.code,
+  style.heading;
 
+@import "./style/root.css" layer(style);
 @import "./style/list.css" layer(style);
 @import "./style/text.css" layer(style);
 @import "./style/link.css" layer(style);
 @import "./style/code.css" layer(style);
-@import "./style/typography.css" layer(style);
+@import "./style/heading.css" layer(style);
 
 @layer style {
   html {
