@@ -1,6 +1,7 @@
 import { Suspense } from 'preact/compat'
 import { useRef } from 'preact/hooks'
 import type { Page } from '#velite'
+import { useMermaid } from '~/hooks/useMermaid'
 import { useTitle } from '~/hooks/useTitle'
 import { Cover } from './Cover'
 import { MdxContent } from './MdxContent'
@@ -19,6 +20,7 @@ export const PageView: React.FC<PageViewProps> = ({ page }) => {
   const bodyRef = useRef<HTMLDivElement>(null)
 
   useTitle(page.title)
+  useMermaid()
 
   return (
     <main class={classes['PageView']}>

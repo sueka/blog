@@ -1,0 +1,5 @@
+@layer mafs {
+  .MafsView {
+    border-radius: 0.25em;
+  }
+}

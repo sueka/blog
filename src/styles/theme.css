@@ -1,14 +1,22 @@
 @layer theme {
   :root {
     --color-background: var(--sand-0);
-    --color-text: var(--sand-8);
-    --color-emphasis: var(--sand-10);
+    --color-text: var(--sand-9);
+    --color-emphasis: var(--sand-11);
     --color-link: var(--blue-8);
     --color-visited: var(--purple-7);
+    --color-border: var(--sand-6);
 
     /* <mark> の子孫の <code> に対して、--stone-4 は φ⁻²、--yellow-5 は (1−φ⁻²) φ⁻¹ = φ⁻² 寄与する。 */
     --color-code: rgb(from var(--stone-4) r g b / var(--phi2-inv));
     --color-mark: rgb(from var(--yellow-5) r g b / var(--phi-inv));
+  }
+
+  .MafsView {
+    --mafs-bg: var(--gray-2);
+    --mafs-fg: var(--gray-7);
+    --mafs-line-color: var(--gray-3);
+    --grid-line-subdivision-color: var(--gray-10);
   }
 
   @media (prefers-color-scheme: dark) {
@@ -18,8 +26,16 @@
       --color-emphasis: var(--sand-0);
       --color-link: var(--blue-5);
       --color-visited: var(--purple-5);
+      --color-border: var(--sand-5);
       --color-code: rgb(from var(--stone-10) r g b / var(--phi2-inv));
       --color-mark: rgb(from var(--teal-10) r g b / var(--phi-inv));
+    }
+
+    .MafsView {
+      --mafs-bg: var(--gray-8);
+      --mafs-fg: var(--gray-1);
+      --mafs-line-color: var(--gray-7);
+      --grid-line-subdivision-color: var(--gray-3);
     }
   }
 }

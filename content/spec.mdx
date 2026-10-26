@@ -1,0 +1,308 @@
+---
+title: Sueka/Social 認証・認可仕様（spec）
+slug: spec
+---
+
+- 文書種別: 規範仕様
+- 状態: 分離作業中のドラフト
+- 対象: Sueka/Social の認証サービス、クライアントアプリ、機能サービス
+- 関連文書: `rationale.md`、`design.md`
+
+## 1. 目的と適用範囲
+
+本書は、Sueka/Social の認証・認可機構について、準拠する実装が満たすべき外部仕様およびセキュリティ上の振る舞いを定める。認可の詳細ポリシーのうち、本書で明示していない機能サービス固有の規則は本書の範囲外とする。
+
+### 1.1 用語と役割
+
+- **認証サービス**: WebAuthn の登録・認証結果を検証し、トークンを発行し、署名検証用公開鍵を公開する。
+- **クライアントアプリ**: 認証サービスと認証器を利用し、登録・認証 UI を提供する。
+- **機能サービス**: 認証トークンを検証し、トークン種別に応じたセッション種別を判定する。
+- **認証器**: 登録時にクレデンシャル鍵ペアを生成し、公開鍵・アテステーション署名を返す。認証時にアサーションを返す。認証器自体の仕様は本書の範囲外とする。
+
+認証サービスとクライアントアプリは、あわせて WebAuthn 依拠当事者（Relying Party）を構成する。
+
+## 2. 認証方式とセッション権限
+
+1. 通常の認証方式は、Discoverable Credentials を用いたパスキーのみとする。ID・パスワード認証その他の通常認証方式は提供しない。
+2. 認証器をすべて失った場合に備え、リカバリーコードによる認証を提供する。
+3. リカバリーコードによる認証は通常セッションではなく、リカバリーセッションを開始する。
+4. リカバリーセッションで許可する操作は、ユーザーデータの取得と削除申請のみとする。
+5. 通常セッションとリカバリーセッションは、認証トークンの `typ` により区別する。`at+jwt` は通常セッション、`rcat+jwt` はリカバリーセッションを表す。
+6. 凍結された主体に対する新たなパスキー認証は拒否する。凍結された主体の通常セッションのリフレッシュは拒否する。リカバリーセッションのリフレッシュは、主体が凍結されていても拒否しない。
+7. 主体が持つ最後の有効なパスキーは失効させてはならない。
+
+## 3. 配置・Cookie の要件
+
+1. クライアントアプリと認証サービスは同一サイト（eTLD+1 が同一のドメイン）に配置する。
+2. リフレッシュトークンは次の Cookie 属性を用いて配送する。
+
+~~~http
+Set-Cookie: refresh_token=<リフレッシュトークン>; HttpOnly; Secure; SameSite=Strict; Max-Age=86400; Path=/
+~~~
+
+3. リフレッシュ時および失効時に、クライアントはリフレッシュトークンを Cookie として送信できなければならない。
+
+## 4. リカバリーコード
+
+1. 登録時にリカバリーコードを 10 個発行する。
+2. 各コードは一度だけ使用できる。
+3. コードは 128 ビット以上のエントロピーを持つ CSPRNG で生成し、表示形式は base32 とする。
+4. 永続ストアに保存するコード表現は SHA-256 ハッシュを base64 で表したものとし、ハッシュ値は一意でなければならない。
+5. コードを消費する際は、コードが未使用かつ失効していないことを確認し、その使用済み状態への更新を原子的に行う。同じコードを並列に提示しても、成功する消費は最大 1 回とする。
+6. リカバリーコードの認証試行には、IP アドレス単位の固定時間窓レート制限を適用する。しきい値と時間窓の長さは運用設定値とする。制限超過時は `429 Too Many Requests` を返し、コードの存在確認・消費より前に制限判定を行う。
+7. リカバリーコードの再発行時は、既存の未使用コードを失効させたうえで、新たに 10 個発行する。
+
+## 5. トークン仕様
+
+### 5.1 種別と有効期限
+
+| トークン | `typ` | 有効期限 | 意味 |
+| -------- | ----- | -------- | ---- |
+| 通常認証トークン（AT） | `at+jwt` | 5 分 | 認証事実を表す |
+| リカバリー認証トークン（RCAT） | `rcat+jwt` | 5 分 | リカバリーセッションにおける認証事実を表す |
+| リフレッシュトークン（RT） | `rt+jwt` | 1 日 | リフレッシュの認可を表す |
+
+### 5.2 ヘッダーとクレーム
+
+AT と RCAT は次のヘッダー・クレームを持つ。
+
+| 項目 | 内容 |
+| ---- | ---- |
+| `typ` | AT は `at+jwt`、RCAT は `rcat+jwt` |
+| `alg` | 署名に使用したアルゴリズム |
+| `kid` | 署名鍵の JWK Thumbprint（base64url） |
+| `sub` | 主体 ID（大文字 hex-and-dash 表現） |
+| `iat` | 発行時刻（NumericDate） |
+| `exp` | 有効期限（NumericDate） |
+
+RT は次のヘッダー・クレームを持つ。
+
+| 項目 |   内容 |
+| ------- |-------------------------------------- |
+| `typ`|   `rt+jwt` |
+| `alg`|   署名鍵に紐づけられた署名アルゴリズム |
+| `kid`|   署名鍵の JWK Thumbprint（base64url） |
+| `sub`|   主体 ID（大文字 hex-and-dash 表現） |
+| `iat`|   発行時刻（NumericDate） |
+| `exp`|   有効期限（NumericDate） |
+| `sid`|   セッション ID（base64url） |
+
+### 5.3 トークン受理条件
+
+認証トークンとして提示されたトークンを受理するのは、次のすべてを満たす場合に限る。
+
+1. 正規の公開鍵で署名を検証できる。
+2. `typ` が `at+jwt` または `rcat+jwt` である。
+3. `exp` が現在時刻より後である。
+4. `alg` が `none` ではない。
+5. `alg` が、`kid` で特定される鍵に紐づけられた署名アルゴリズムと一致する。
+6. 署名アルゴリズムはトークンヘッダーの `alg` から選択してはならない。検証鍵に関連付けられたアルゴリズムを用いる。
+
+認証サービスにおける正規の公開鍵は、Active 鍵と、削除可能時刻を過ぎていない Retired 鍵である。機能サービスにおける正規の公開鍵は、JWKS エンドポイントから取得した JWK またはそのキャッシュである。機能サービスは JWK の `alg` を鍵に関連付けられたアルゴリズムとして扱う。
+
+機能サービスは、ヘッダーの `kid` と JWKS の JWK の `kid` を照合して鍵を特定する。未知の `kid` を含むトークンを受信した場合、キャッシュ状態によらず JWKS エンドポイントを即時に再取得する。
+
+機能サービスは `typ` に応じてセッション種別を判断する。RCAT で認証されたセッションには、ユーザーデータの取得と削除申請のみを許可する。
+
+### 5.4 クライアント側の取扱い
+
+認証トークンは、クライアントアプリが保持し、API リクエストで提示する。クライアントアプリは、認証トークンの `exp` だけを根拠に能動的なリフレッシュを開始してはならない。認証トークンの期限切れを示す応答を受け取った場合は、`POST /refresh` を実行し、成功した場合には元の呼び出しを再試行してよい。
+
+## 6. 鍵ローテーション
+
+1. 認証サービスは、トークン署名用の Active 鍵を常に 1 組保持する。
+2. 平時の鍵ローテーション後も、旧鍵で署名された有効期限内のトークンを検証できるよう、旧公開鍵を JWKS の応答に含め続ける。
+3. 旧公開鍵は、旧鍵で発行された RT の有効期限、AT/RCAT の有効期限、および 1 分の余裕を考慮した削除可能時刻を過ぎた後に削除できる。
+4. 鍵漏洩が疑われる場合の緊急ローテーションでは、Retired 鍵をすべて削除し、Active 鍵を新しい鍵に置き換える。
+5. 緊急ローテーション後、旧鍵で署名された RT は検証できない。旧鍵で署名された AT/RCAT は、最大 5 分の有効期限が切れることで自然失効する。
+6. 各公開鍵の JWK は `alg` と `kid` を含む。`kid` は JWK Thumbprint（base64url）とする。
+
+## 7. HTTP API
+
+以下に示す API 契約を満たすこと。WebAuthn のメッセージ形式・暗号学的検証の詳細は WebAuthn の該当仕様に従う。
+
+### 7.1 `POST /attestation/options`
+
+アテステーションを開始し、`PublicKeyCredentialCreationOptions`（CCO）を返す。
+
+- リクエスト JSON: `username`（必須）、`displayName`（省略可）
+- `username` または `displayName` が空の場合: `400 Bad Request`
+- 成功時: `200 OK`、`Content-Type: application/json`
+- レスポンス JSON: `{"publicKey": <PublicKeyCredentialCreationOptions>}`
+- アテステーションセッション ID を次の Cookie で返す。
+
+~~~http
+Set-Cookie: webauthn_attestation_session=<セッション ID>; HttpOnly; Secure; SameSite=Strict; Max-Age=300; Path=/
+~~~
+
+### 7.2 `POST /attestation/result`
+
+アテステーション結果を検証し、主体とパスキーを登録してリカバリーコードを発行する。
+
+- Cookie: `webauthn_attestation_session`
+- リクエスト JSON: `credential`（`RegisterPublicKeyCredential`）
+- アテステーション検証失敗時: `403 Forbidden`
+- 成功時: `201 Created`、`Content-Type: application/json`
+- レスポンス JSON: `{"recovery_codes": ["<code_1>", "...", "<code_10>"]}`
+- 主体・パスキー・リカバリーコードの永続化が失敗した場合の整合性を保証すること。
+
+### 7.3 `POST /assertion/options`
+
+アサーションを開始し、`PublicKeyCredentialRequestOptions`（CRO）を返す。
+
+- 成功時: `200 OK`
+- アサーションセッション ID を次の Cookie で返す。
+
+~~~http
+Set-Cookie: webauthn_assertion_session=<セッション ID>; HttpOnly; Secure; SameSite=Strict; Max-Age=300; Path=/
+~~~
+
+### 7.4 `POST /assertion/result`
+
+アサーション結果を検証し、AT と RT を発行する。
+
+- Cookie: `webauthn_assertion_session`
+- リクエスト JSON: `credential`（`PublicKeyCredential`）
+- アサーション検証失敗、有効でないパスキー、または凍結主体の場合: `403 Forbidden`
+- 成功時: `200 OK`、`Content-Type: application/json`
+- レスポンス JSON: `{"auth_token": "<認証トークン>"}`
+- RT は `refresh_token` Cookie で返す。
+
+### 7.5 `GET /.well-known/jwks.json`
+
+トークン署名検証に使用する公開鍵の一覧を返す。
+
+- 成功時: `200 OK`、`Content-Type: application/json`
+- 応答コンテントは JWK Set とする。
+- Active 鍵と、削除可能時刻を超えていないすべての Retired 鍵を含める。
+- 各 JWK は `alg` と `kid` を含める。
+
+### 7.6 `POST /refresh`
+
+AT/RCAT と RT を検証し、新しい同種の認証トークンと RT を発行する。
+
+- Cookie: `refresh_token`
+- リクエスト JSON: `auth_token`（期限切れのトークンも入力として受け付けるが、受理条件は以下に従う）
+- RT の署名不正、種別不一致、期限切れ、未知のセッション、現行 RT と一致しない未認識トークン、または凍結主体の AT リフレッシュは `403 Forbidden`
+- AT/RCAT の署名検証失敗、または `sub` が RT と一致しない場合は `401 Unauthorized`
+- AT/RCAT の種別が不正、または AT/RCAT の `iat` が RT の `iat` より後の場合は `400 Bad Request`
+- RCAT は主体が凍結中でもリフレッシュできる。
+- 成功時: `200 OK`、`Content-Type: application/json`、レスポンス JSON `{"auth_token": "<認証トークン>"}`
+- RT は新しい `refresh_token` Cookie で返す。
+- 同一セッションに対する並列リフレッシュで更新競合が発生した場合は `409 Conflict` とする。
+- RT の更新と使用済み RT の記録は原子的に行う。
+- 有効期限内の使用済み RT の再利用を検知した場合、そのセッションを強制終了し `403 Forbidden` とする。期限切れの RT は再利用検知によるセッション強制終了の対象としない。
+
+### 7.7 `POST /revoke`
+
+AT/RCAT と RT を受け取り、対象セッションを失効させる。
+
+- Cookie: `refresh_token`
+- リクエスト JSON: `auth_token`（期限切れのトークンも受け付ける）
+- AT/RCAT の署名検証失敗時: `401 Unauthorized`
+- AT/RCAT と RT の `sub` が一致しない場合、または対象セッションが既に存在しない場合は、セッションを変更せず `200 OK` を返す。
+- 提示された RT が現行 RT と一致する場合、当該セッションを失効させる。
+- 成功時: `200 OK`、`Content-Type: application/json`、ボディ `{}`。
+- AT/RCAT と RT の `sub` が一致する場合、Cookie を次のように削除する。
+
+~~~http
+Set-Cookie: refresh_token=; HttpOnly; Secure; SameSite=Strict; Max-Age=0; Path=/
+~~~
+
+- 実際にセッションを削除した場合と no-op の場合は、監査ログ上で区別する。
+- AT/RCAT はステートレスであるため、既に発行済みの認証トークンは有効期限まで（最大 5 分）利用できる。
+
+### 7.8 `POST /recovery`
+
+リカバリーコードを受け取り、RCAT と RT を発行する。
+
+- リクエスト JSON: `recovery_code`
+- IP 単位のレート制限をコード照会・消費より先に適用する。超過時: `429 Too Many Requests`
+- コードが存在しない、使用済み、または失効済みの場合: `401 Unauthorized`
+- コード消費は原子的に行う。
+- 凍結中の主体でもリカバリーセッションを開始できる。
+- 成功時: `200 OK`、`Content-Type: application/json`、レスポンス JSON `{"auth_token": "<RCAT>"}`
+- RT は `refresh_token` Cookie で返す。
+
+### 7.9 `POST /recoveryCodes/reissue`
+
+AT セッションのみで、未使用のリカバリーコードを失効させ、新たに 10 個発行する。
+
+- `Authorization` ヘッダー: `auth_token`
+- 成功時: `200 OK`、`Content-Type: application/json`、レスポンス JSON `{"recovery_codes": ["<code_1>", "...", "<code_10>"]}`
+- 失敗時: `400 Bad Request` または `401 Unauthorized`
+- 期限切れによる `401 Unauthorized` の JSON: `{"error": "token_expired"}`
+- その他のエラー応答の JSON: `{}`
+
+### 7.10 `GET /passkeys`
+
+AT セッションのみで、有効なパスキーの一覧を返す。
+
+- `Authorization` ヘッダー: `auth_token`
+- 成功時: `200 OK`、`Content-Type: application/json`
+- レスポンス JSON:
+
+  ~~~json
+  {
+    "passkeys": [
+      {
+        "credential_id": "<Credential ID (base64url)>",
+        "last_used_at": "<NumericDate または null>"
+      }
+    ]
+  }
+  ~~~
+
+- 失効済みパスキーは一覧に含めない。
+- 失敗時: `400 Bad Request` または `401 Unauthorized`
+- 期限切れによる `401 Unauthorized` の JSON: `{"error": "token_expired"}`
+- その他のエラー応答の JSON: `{}`
+
+### 7.11 `POST /passkeys/revoke`
+
+AT セッションで指定されたパスキーを失効させる。
+
+- `Authorization` ヘッダー: `auth_token`
+- リクエスト JSON: `credential_id`（base64url）
+- 指定したパスキーが主体に属する有効なパスキーとして存在しない場合: `404 Not Found`
+- 失効後に有効なパスキーが 0 件になる場合: `400 Bad Request`
+- 成功時: `204 No Content`
+- 失敗時: `400 Bad Request`、`401 Unauthorized` または `404 Not Found`
+- 期限切れによる `401 Unauthorized` の JSON: `{"error": "token_expired"}`
+- その他のエラー応答の JSON: `{}`
+
+**未決定事項:** パスキー失効のような不可逆・機密性の高い操作に、直近の WebAuthn アサーションによる昇格認証を要求するかどうかは未決定である。決定されるまで、この点を確定済み要件として扱わない。
+
+## 8. 監査ログ
+
+認証サービスは、改竄検知可能な append-only ストリームとして監査ログを保持し、タイムスタンプを UTC で記録する。
+
+ | イベント | 記録フィールド | 条件・備考 |
+ | ------------------------ | ---------------------------------------- | ---------------------------- |
+ | パスキー登録 | `sub`、タイムスタンプ | `POST /attestation/result` 成功時 |
+ | パスキー失効 | `sub`、`credential_id`、タイムスタンプ | `POST /passkeys/revoke` 成功時 |
+ | 認証成功 | `sub`、`sid`、タイムスタンプ | |
+ | 認証失敗 | IP アドレス、タイムスタンプ、失敗理由 | |
+ | 凍結中の認証試行 | `sub`、タイムスタンプ | |
+ | セッション失効 | `sub`、`sid`、タイムスタンプ | `POST /revoke` で実際に削除した場合のみ |
+ | RT 再利用検知 | `sub`、`sid`、提示 RT、ハッシュ、タイムスタンプ | セッション強制終了を伴う |
+ | AT/RCAT と RT の `sub` 不一致 | AT/RCAT の `sub`、RT の `sub`、`sid`、タイムスタンプ | `/refresh` は 401、`/revoke` は 200 |
+ | RT 署名検証失敗 | IP アドレス、失敗理由、タイムスタンプ | |
+ | RT 不正 | `sub`、失敗理由、タイムスタンプ | `typ` 不一致、期限切れ、未知の `sid` 等 |
+ | リカバリーコード使用 | `sub`、成否、タイムスタンプ | |
+ | リカバリーコード再発行 | `sub`、タイムスタンプ | 成功時 |
+ | レート制限超過 | `sub`、タイムスタンプ | |
+ | 鍵ローテーション | 旧 `kid`、新 `kid`、タイムスタンプ | |
+
+IP アドレスは、主体を特定できない場合に限り、認証主体の代替情報として記録する。IP アドレスの法的根拠、保存期間、削除ポリシーは本書では規定せず、別途定める。
+
+## 9. 未決定・確認事項
+
+以下は元文書で未完了、曖昧、または推奨にとどまっていた事項である。ここでは勝手に決定せず、未決定として明示する。
+
+1. パスキー失効などの高リスク操作に昇格認証を要求する範囲と方式。
+2. 登録時の主体・パスキー・リカバリーコードの保存原子性を必須要件とするか。本文では整合性保証を要求する表現に整理したが、障害時の回復・ロールバック動作は別途具体化が必要。
+3. AT/RCAT のブラウザー側保存方式。元文書には Session Storage / Local Storage 等とする記述がある一方、TODO が残っているため、具体方式は design で決定する。
+4. 認証サービスの監査ログにおける、レート制限超過時の `sub` の取得方法。コードを参照する前に制限判定する仕様との整合を確認する。
+5. `POST /passkeys/revoke` を `DELETE` ではなく `POST` とする理由。
+6. 概要のコンセプト・目的の文章。

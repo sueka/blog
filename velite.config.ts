@@ -2,11 +2,13 @@ import { fail } from 'node:assert'
 import path from 'node:path'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeKatex from 'rehype-katex'
+import rehypeMermaid from 'rehype-mermaid'
 import remarkDefinitionList, {
   defListHastHandlers,
 } from 'remark-definition-list'
 import remarkMath from 'remark-math'
 import { defineConfig, s } from 'velite'
+import { rehypeTableContainer } from './plugins/rehypeTableContainer/rehypeTableContainer'
 
 const rehypeKatexPerFile: typeof rehypeKatex =
   (options = {}) =>
@@ -18,7 +20,17 @@ const rehypeKatexPerFile: typeof rehypeKatex =
 
 export default defineConfig({
   mdx: {
-    rehypePlugins: [rehypeHighlight, rehypeKatexPerFile],
+    rehypePlugins: [
+      rehypeTableContainer,
+      rehypeHighlight,
+      rehypeKatexPerFile,
+      [
+        rehypeMermaid,
+        {
+          strategy: 'pre-mermaid',
+        },
+      ],
+    ],
     remarkPlugins: [remarkDefinitionList, remarkMath],
     remarkRehypeOptions: { handlers: { ...defListHastHandlers } },
   },

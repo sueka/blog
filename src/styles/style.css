@@ -4,7 +4,9 @@
   style.list,
   style.text,
   style.link,
+  style.table,
   style.code,
+  style.diagram,
   style.heading;
 
 @import "./style/root.css" layer(style);
@@ -12,7 +14,9 @@
 @import "./style/list.css" layer(style);
 @import "./style/text.css" layer(style);
 @import "./style/link.css" layer(style);
+@import "./style/table.css" layer(style);
 @import "./style/code.css" layer(style);
+@import "./style/diagram.css" layer(style);
 @import "./style/heading.css" layer(style);
 
 @layer style {

@@ -33,4 +33,9 @@
   h6 {
     font-size: calc(pow(var(--phi), 0 / 4) * 100%);
   }
+
+  hr {
+    margin-block: 1em;
+    border-color: var(--color-border);
+  }
 }

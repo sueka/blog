@@ -1,0 +1,23 @@
+@layer diagram {
+  .mermaid {
+    /* inline-size: fit-content; */
+    margin-inline: auto;
+    display: flow-root;
+    /* font-size: revert; */
+  }
+
+  pre.mermaid {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-x: auto;
+  }
+
+  pre.mermaid svg {
+    max-width: 100%;
+  }
+
+  .mermaid p {
+    text-indent: 0;
+  }
+}

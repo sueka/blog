@@ -2,23 +2,24 @@
   pre,
   code {
     font-variant-ligatures: none;
-    line-height: calc(var(--sqrt2));
   }
 
-  code:not(pre code) {
+  pre {
+    line-height: calc(var(--sqrt2));
+    white-space: break-spaces;
+    font-size: calc(39 / 44 * 100%);
+    text-align: start;
+  }
+
+  code:not(pre code),
+  pre:not(.mermaid):not(:has(.hljs)) {
     background-color: var(--color-code);
     padding: 0.25em;
     border-radius: 0.25em;
   }
 
-  pre code {
+  .hljs {
     padding: 0.25em;
     border-radius: 0.25em;
-    white-space: break-spaces;
-    font-size: calc(39 / 44 * 100%);
-  }
-
-  pre {
-    text-align: start;
   }
 }
