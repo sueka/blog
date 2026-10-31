@@ -4,6 +4,17 @@ import { usePrefersDark } from './usePrefersDark'
 
 type ScheduleFrame = (callback: FrameRequestCallback) => void
 
+interface RenderState {
+  pres: Iterable<Element>
+  rendering: WeakSet<Element>
+  pending: WeakSet<Element>
+}
+
+interface RenderContext {
+  signal: AbortSignal
+  prefersDark: boolean
+}
+
 /**
  * (source, id) の WeakMap.
  */
@@ -22,153 +33,116 @@ function getSourceAndId(pre: Element): readonly [string, string] {
   return entry
 }
 
+/**
+ * {@link pre} の描画要求を登録し、必要に応じて、描画要求を処理する RAF を予約する.
+ */
 function scheduleRender(
   pre: Element,
-  signal: AbortSignal,
-  prefersDark: boolean,
-  pres: Iterable<Element>,
-  rendering: WeakSet<Element>,
-  pending: WeakSet<Element>,
-  scheduleFrame: ScheduleFrame,
+  context: RenderContext,
+  state: RenderState,
+  requestBaf: ScheduleFrame,
 ) {
-  if (pending.has(pre)) {
+  // すでに描画要求が登録されている場合は何もしない。
+  if (state.pending.has(pre)) {
     return
   }
 
-  pending.add(pre)
+  state.pending.add(pre)
 
-  if (rendering.has(pre)) {
+  // すでに描画中の場合は追加の RAF を予約しない。
+  if (state.rendering.has(pre)) {
     return
   }
 
-  scheduleFrame(() => {
-    if (pending.has(pre)) {
-      pending.delete(pre)
-      renderPre(
-        pre,
-        signal,
-        prefersDark,
-        pres,
-        rendering,
-        pending,
-        scheduleFrame,
-      )
+  requestBaf(() => {
+    if (state.pending.has(pre)) {
+      state.pending.delete(pre)
+      void renderPre(pre, context, state, requestBaf)
     }
   })
 }
 
+/**
+ * {@link pre} の描画処理を終了する.
+ */
 function finishRender(
   pre: Element,
-  signal: AbortSignal,
-  prefersDark: boolean,
-  pres: Iterable<Element>,
-  rendering: WeakSet<Element>,
-  pending: WeakSet<Element>,
-  scheduleFrame: ScheduleFrame,
+  context: RenderContext,
+  state: RenderState,
+  requestBaf: ScheduleFrame,
 ) {
-  rendering.delete(pre)
+  state.rendering.delete(pre)
 
-  if (!signal.aborted && pending.has(pre)) {
-    pending.delete(pre)
-    scheduleRender(
-      pre,
-      signal,
-      prefersDark,
-      pres,
-      rendering,
-      pending,
-      scheduleFrame,
-    )
+  if (!context.signal.aborted && state.pending.has(pre)) {
+    state.pending.delete(pre)
+    scheduleRender(pre, context, state, requestBaf)
   }
 }
 
-function renderPre(
+/**
+ * Mermaid {@link source} を {@link pre} に描画する.
+ */
+async function renderPre(
   pre: Element,
-  signal: AbortSignal,
-  prefersDark: boolean,
-  pres: Iterable<Element>,
-  rendering: WeakSet<Element>,
-  pending: WeakSet<Element>,
-  scheduleFrame: ScheduleFrame,
+  context: RenderContext,
+  state: RenderState,
+  requestBaf: ScheduleFrame,
 ) {
-  if (signal.aborted) {
+  // effect が無効の場合は描画しない。
+  if (context.signal.aborted) {
     return
   }
 
-  if (rendering.has(pre)) {
-    pending.add(pre)
+  // 描画中の場合は追加の描画要求を登録する。
+  if (state.rendering.has(pre)) {
+    state.pending.add(pre)
     return
   }
 
-  rendering.add(pre)
+  state.rendering.add(pre)
 
   const [source, id] = getSourceAndId(pre)
 
-  ;(async () => {
+  try {
     const { svg, bindFunctions } = await mermaid.render(
-      `${id}-${prefersDark ? 'dark' : 'light'}`,
+      `${id}-${context.prefersDark ? 'dark' : 'light'}`,
       source,
       pre,
     )
 
-    if (!signal.aborted) {
+    // effect が有効の場合に限り、描画結果を DOM に反映させる。
+    if (!context.signal.aborted) {
       pre.innerHTML = svg
       bindFunctions?.(pre)
     }
-  })().then(
-    () =>
-      finishRender(
-        pre,
-        signal,
-        prefersDark,
-        pres,
-        rendering,
-        pending,
-        scheduleFrame,
-      ),
-    (error) => {
-      if (!signal.aborted) {
-        console.error('Failed to render Mermaid diagram:', error)
-      }
-
-      finishRender(
-        pre,
-        signal,
-        prefersDark,
-        pres,
-        rendering,
-        pending,
-        scheduleFrame,
-      )
-    },
-  )
+  } catch (error) {
+    if (!context.signal.aborted) {
+      console.error('Failed to render Mermaid diagram:', error)
+    }
+  } finally {
+    finishRender(pre, context, state, requestBaf)
+  }
 }
 
-export function useMermaid() {
-  const prefersDark = usePrefersDark()
+/**
+ * 複数の callback を RAF にまとめるための関数を生成する.
+ */
+function createBaf(): {
+  /**
+   * {@link callback} をキューに追加し、RAF が未予約の場合は予約する.
+   */
+  requestBaf: ScheduleFrame
 
-  useEffect(() => {
-    const controller = new AbortController()
-    const { signal } = controller
-    let frame: number | null = null
+  /**
+   * RAF をキャンセルする.
+   */
+  cancelBaf(): void
+} {
+  let frame: number | null = null
+  const callbacks: FrameRequestCallback[] = []
 
-    const pres = document.querySelectorAll('pre.mermaid')
-
-    const widths = new WeakMap<Element, number>()
-    const rendering = new WeakSet<Element>()
-    const pending = new WeakSet<Element>()
-
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: prefersDark ? 'neo-dark' : 'neo',
-      themeVariables: {
-        fontSize: 'unset',
-      },
-    })
-
-    const callbacks: FrameRequestCallback[] = []
-
-    const scheduleFrame: ScheduleFrame = (callback) => {
+  return {
+    requestBaf(callback) {
       // enqueue
       callbacks.push(callback)
 
@@ -186,7 +160,31 @@ export function useMermaid() {
           callback(timestamp)
         }
       })
+    },
+    cancelBaf() {
+      if (frame != null) {
+        cancelAnimationFrame(frame)
+        frame = null
+      }
+    },
+  }
+}
+
+export function useMermaid() {
+  const prefersDark = usePrefersDark()
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    const state: RenderState = {
+      pres: document.querySelectorAll('pre.mermaid'),
+      rendering: new WeakSet(),
+      pending: new WeakSet(),
     }
+
+    const { requestBaf, cancelBaf } = createBaf()
+
+    const widths = new WeakMap<Element, number>()
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -196,30 +194,37 @@ export function useMermaid() {
 
         widths.set(pre, width)
 
-        if (width <= 0) continue
+        if (width <= 0) {
+          continue
+        }
 
         if (previousWidth == null || Math.abs(width - previousWidth) >= 1) {
           scheduleRender(
             pre,
-            signal,
-            prefersDark,
-            pres,
-            rendering,
-            pending,
-            scheduleFrame,
+            { signal: controller.signal, prefersDark },
+            state,
+            requestBaf,
           )
         }
       }
     })
 
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: prefersDark ? 'neo-dark' : 'neo',
+      themeVariables: {
+        fontSize: 'unset',
+      },
+    })
+
     ;(async () => {
       await document.fonts.ready
 
-      if (signal.aborted) {
+      if (controller.signal.aborted) {
         return
       }
 
-      for (const pre of pres) {
+      for (const pre of state.pres) {
         observer.observe(pre)
       }
     })()
@@ -227,11 +232,7 @@ export function useMermaid() {
     return () => {
       controller.abort()
       observer.disconnect()
-
-      if (frame != null) {
-        cancelAnimationFrame(frame)
-        frame = null
-      }
+      cancelBaf()
     }
   }, [prefersDark])
 }

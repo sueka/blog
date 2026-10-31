@@ -15,15 +15,7 @@ slug: social-auth
 
 {/* TODO */}
 
-### 1.3 本書の構成
-
-本書は、本文 (1 章から 9 章) と 2 つの付録で構成される。
-
-- 本文: 必須の振る舞いと、それを満たすための内部の構造・手順 (仕様・設計)。
-- 付録 A「前提・原則・方針」: 本文に先立って決まっている事実と判断の基準、およびシステムの振る舞いの大枠。それ自体の根拠は、各項に含める。
-- 付録 B「根拠」: 本文の個々の規則が、そうなっている理由。非規範であり、規則の内容を変更しない。
-
-## 2. 登場人物
+## 1.3 登場人物
 
 {/*
 id: spec-actors
@@ -63,7 +55,7 @@ id: spec-webauthn
 | 認証主体への認可                 | 機能サービス                  |
 | 認可の詳細ポリシー               | 機能サービス (本仕様の範囲外) | */}
 
-## 3. インフラ要件
+## 2. インフラ要件
 
 {/*
 id: spec-same-site
@@ -75,11 +67,11 @@ id: spec-same-site
 id: spec-reverse-proxy
 */}
 
-認証サービスの手前にリバースプロキシ等を配置するかどうかは、デプロイ環境ごとの構成として扱う ([4.2 インメモリ KVS](#42-インメモリ-kvs) のレート制限カウンターを参照)。
+認証サービスの手前にリバースプロキシ等を配置するかどうかは、デプロイ環境ごとの構成として扱う ([3.2 インメモリ KVS](#42-インメモリ-kvs) のレート制限カウンターを参照)。
 
-## 4. データストア
+## 3. データストア
 
-### 4.1 RDB
+### 3.1 RDB
 
 認証主体と認証器に関する情報を保持する。
 
@@ -104,7 +96,7 @@ dependencies: [prem-uuid-not-memorized, spec-subjects-table]
 
 {/*
 id: spec-frozen-subject
-dependencies: [pol-recovery-not-frozen, spec-stateless-token, spec-subjects-table]
+dependencies: [pol-recovery-not-restricted, spec-stateless-token, spec-subjects-table]
 */}
 
 {/* TODO: 「に対する」でよいか */}
@@ -118,6 +110,7 @@ id: spec-passkeys-table
 
 | カラム          | 型          | 説明                                        |
 | --------------- | ----------- | ------------------------------------------- |
+| `id`            | uuid        | パスキーの ID                               |
 | `subject_id`    |             | 主体の ID (`subjects.id` の外部キー)        |
 | `credential_id` | bytea       | 認証器の Credential ID                      |
 | `passkey_text`  | text        | パスキー情報 (公開鍵やカウンターなどを含む) |
@@ -131,12 +124,12 @@ id: spec-recovery-codes-table
 dependencies: [pol-recovery]
 */}
 
-| カラム       | 型          | 説明                                                 |
-| ------------ | ----------- | ---------------------------------------------------- |
-| `subject_id` |             | 主体の ID (`subjects.id` の外部キー)                 |
-| `code_hash`  | text        | リカバリーコードの SHA-256 ハッシュ (base64, UNIQUE) |
-| `used_at`    | timestamptz | 使用日時 (NULL: 未使用)                              |
-| `revoked_at` | timestamptz | 失効日時 (NULL: 有効)                                |
+| カラム       | 型          | 説明                                         |
+| ------------ | ----------- | -------------------------------------------- |
+| `subject_id` |             | 主体の ID (`subjects.id` の外部キー)         |
+| `code_hash`  | bytea       | リカバリーコードの SHA-256 ハッシュ (UNIQUE) |
+| `used_at`    | timestamptz | 使用日時 (NULL: 未使用)                      |
+| `revoked_at` | timestamptz | 失効日時 (NULL: 有効)                        |
 
 リカバリーコードは登録時に 10 個発行される。各リカバリーコードは一度しか使用できない。
 
@@ -145,7 +138,7 @@ id: spec-recovery-code-format
 dependencies: [prin-encoding-by-path]
 */}
 
-リカバリーコードは 128 ビット以上のエントロピーを持つ CSPRNG で生成される。表示形式は RFC 4648 の **base32** (パディングなし) を用いる。
+リカバリーコードは 128 ビット以上のエントロピーを持つ CSPRNG で生成される。表示形式は **base32** (パディングなし) を用いる。
 
 {/*
 id: spec-code-hash-lookup
@@ -161,7 +154,7 @@ dependencies: [spec-recovery-code-format]
 
 `code_hash` には SHA-256 を使用する。
 
-### 4.2 インメモリ KVS
+### 3.2 インメモリ KVS
 
 認証サービスの一時的な状態を管理する。次の 2 つの用途で使用する。
 
@@ -189,33 +182,33 @@ dependencies: [prin-encoding-by-path]
 
 セッション ID は 128 ビット以上のエントロピーを持つ CSPRNG で生成される。表示形式は base64url を用いる。
 
-#### レート制限カウンター (`ratelimit:recovery`)
+#### レート制限カウンター (`ratelimit`)
 
 {/*
 id: spec-ratelimit-counter
 dependencies: [prem-tcp-source-not-client, spec-reverse-proxy]
 */}
 
-| キー                      | データ型 | 説明                                                                         |
-| ------------------------- | -------- | ---------------------------------------------------------------------------- |
-| `ratelimit:recovery:{ip}` | String   | *リカバリーコードによる認証* (`POST /recovery`) における、時間窓内の試行回数 |
+| キー                        | データ型 | 説明                                                              |
+| --------------------------- | -------- | ----------------------------------------------------------------- |
+| `ratelimit:{endpoint}:{ip}` | String   | `{endpoint}` で表されるエンドポイントにおける、時間窓内の試行回数 |
 
-`{ip}` はクライアントの IP アドレスの正規化された文字列表現である。`{ip}` の取得元 (ヘッダー名を含む) は設定可能なパラメーターとする。
+`{ip}` はクライアントの IP アドレスの正規化された文字列表現である。`{ip}` の取得元 (ヘッダー名を含む) は設定可能なパラメーターとする。`{endpoint}` はエンドポイントのパスである。
 
-*リカバリーコードによる認証* (`POST /recovery`) の受信時、次の手順で IP アドレス単位の固定時間窓カウンターを更新する。
+エンドポイントの受信時、次の手順で IP アドレス単位の固定時間窓カウンターを更新する。
 
 ~~~redis
 MULTI
-INCR ratelimit:recovery:{ip}
-EXPIRE ratelimit:recovery:{ip} <時間窓の長さ> NX
+INCR ratelimit:{endpoint}:{ip}
+EXPIRE ratelimit:{endpoint}:{ip} <時間窓の長さ> NX
 EXEC
 ~~~
 
 `INCR` の結果がしきい値を超えている場合、`429 Too Many Requests` を返す。`EXPIRE` には `NX` を指定する。
 
-しきい値および時間窓の長さは、設定可能なパラメーターとし、本書では具体的な数値を規定しない。
+しきい値および時間窓の長さは、エンドポイントごとに設定可能なパラメーターとし、本書では具体的な数値を規定しない。
 
-## 5. トークン
+## 4. トークン
 
 {/*
 id: spec-token-kinds
@@ -236,7 +229,7 @@ dependencies: [spec-token-kinds]
 
 JWS は、JWS Compact Serialization (RFC 7515) の形式とする。
 
-### 5.1 認証トークン
+### 4.1 認証トークン
 
 {/*
 id: spec-auth-token
@@ -271,7 +264,7 @@ dependencies: [spec-auth-token]
 | `iat`    | number | 発行時刻 (NumericDate)              |
 | `exp`    | number | 有効期限 (NumericDate)              |
 
-#### 5.1.1 通常の認証トークン
+#### 4.1.1 通常の認証トークン
 
 {/*
 id: spec-at
@@ -286,7 +279,7 @@ dependencies: [spec-auth-token]
 | ------------ | ------ | ---------- |
 | `typ`        | string | `"at+jwt"` |
 
-#### 5.1.2 リカバリー認証トークン
+#### 4.1.2 リカバリー認証トークン
 
 {/*
 id: spec-rcat
@@ -329,7 +322,7 @@ dependencies: [pol-no-clock-skew, spec-auth-token, spec-key-slots]
 
 正規の公開鍵は次のものをいう:
 
-- 認証サービスでは、*Active スロット*の鍵と、現在時刻が削除可能時刻を越えていない全ての *Retired スロット*の鍵。各鍵には、鍵の種類 (`kty`/`crv`) によらず、生成時に明示的に選択・宣言された署名アルゴリズムが紐づく ([6.1 鍵スロットの構成](#61-鍵スロットの構成) を参照)。
+- 認証サービスでは、*Active スロット*の鍵と、現在時刻が削除可能時刻を越えていない全ての *Retired スロット*の鍵。各鍵には、鍵の種類 (`kty`/`crv`) によらず、生成時に明示的に選択・宣言された署名アルゴリズムが紐づく ([5.1 鍵スロットの構成](#61-鍵スロットの構成) を参照)。
 - 機能サービスでは、*JWKS エンドポイント*から取得した JWK またはそのキャッシュ。署名アルゴリズムは、その JWK 自身の `alg` フィールドの値とする。
 
 トークンが正規の公開鍵によって*検証される*とは、`kid` に対応する鍵に紐づけられた署名アルゴリズムを用いて、そのトークンの署名が有効であることが確認できることをいう。このとき、検証に使用する署名アルゴリズムを、トークンのヘッダーの `alg` から選択してはならない。
@@ -353,10 +346,12 @@ dependencies: [spec-auth-condition, spec-jwks-endpoint]
 
 - 検証に使用する鍵は、ヘッダーの `kid` と JWKS の各鍵エントリの `kid` を照合して特定する
 - 未知の `kid` を含むトークンを受信した場合、キャッシュの状態によらず、JWKS エンドポイントを即時に再取得する
+- JWKS のキャッシュを、`Cache-Control` の `max-age` を超えて使用しない
+- JWKS を取得したときは、取得した JWK Set でキャッシュを置き換える (含まれない鍵は、キャッシュから削除する)
 
 ---
 
-### 5.2 リフレッシュトークン
+### 4.2 リフレッシュトークン
 
 {/*
 id: spec-refresh-token
@@ -378,6 +373,7 @@ dependencies: [spec-token-kinds]
 | クレーム | 型     | 説明                                |
 | -------- | ------ | ----------------------------------- |
 | `sub`    | string | 認証主体の ID (大文字 hex-and-dash) |
+| `pkid`   | string | パスキーの ID (大文字 hex-and-dash) |
 | `iat`    | number | 発行時刻 (NumericDate)              |
 | `exp`    | number | 有効期限 (NumericDate)              |
 | `sid`    | string | セッション ID (base64url)           |
@@ -392,12 +388,12 @@ dependencies: [spec-same-site]
 レスポンスの `Set-Cookie` ヘッダーに付加して配送する。
 
 ~~~http
-Set-Cookie: refresh_token=<リフレッシュトークン>; HttpOnly; Secure; SameSite=Strict; Max-Age=86400; Path=/
+Set-Cookie: __Host-refresh_token=<リフレッシュトークン>; HttpOnly; Secure; SameSite=Strict; Max-Age=86400; Path=/
 ~~~
 
-## 6. 鍵ローテーション
+## 5. 鍵ローテーション
 
-### 6.1 鍵スロットの構成
+### 5.1 鍵スロットの構成
 
 {/*
 id: spec-key-slots
@@ -415,7 +411,7 @@ id: spec-key-slots
 移行期間中は、Active・Retired の各スロットに、異なる鍵の種類 (たとえば EC と OKP) の鍵が混在しうる。
 
 
-### 6.2 手順
+### 5.2 手順
 
 現在各スロットにある鍵を次のように呼ぶ:
 
@@ -426,7 +422,7 @@ id: spec-key-slots
 
 新たに投入する鍵を **鍵 X** とする。
 
-#### 6.2.1 平時ローテーション
+#### 5.2.1 平時ローテーション
 
 {/*
 id: spec-rotation-routine
@@ -440,7 +436,7 @@ dependencies: [spec-key-slots, spec-jwks-endpoint]
 
 手順 1 の直後、一時的に鍵 A が Active スロットと Retired スロットの両方に存在するタイミングがあるが、JWKS エンドポイントは両スロットの公開鍵を返す。このとき、同じ鍵が重複して含まれてもよいし、重複排除されていてもよい。
 
-#### 6.2.2 緊急ローテーション
+#### 5.2.2 緊急ローテーション
 
 {/*
 id: spec-rotation-emergency
@@ -454,13 +450,20 @@ dependencies: [spec-stateless-token, spec-key-slots]
 
 削除する鍵を限定したローテーション手順は規定しない。
 
-緊急ローテーション完了後、過去に鍵 A, 鍵 B₁, 鍵 B₂, … で署名されたリフレッシュトークンは即時検証不可となる。旧鍵で署名された認証トークンは有効期限 (最大 5 分) 以内に自然失効する。
+緊急ローテーション完了後、過去に鍵 A, 鍵 B₁, 鍵 B₂, … で署名されたリフレッシュトークンは即時検証不可となる。機能サービスは、JWKS のキャッシュを更新するまで、最長で JWKS のキャッシュの最大寿命に相当する期間 ([6.5 JWKS エンドポイント](#65-jwks-エンドポイント) を参照)、鍵 A, 鍵 B₁, 鍵 B₂, … で署名された認証トークンを受け入れる。
 
 {/* MARK: Reviewed Below */}
 
-## 7. エンドポイント
+## 6. エンドポイント
 
-### 7.1 アテステーション準備エンドポイント
+{/*
+id: spec-ratelimit-all-endpoints
+dependencies: [spec-ratelimit-counter]
+*/}
+
+すべてのエンドポイントは、処理に先立って、IP アドレス単位のレート制限を判定する ([3.2 インメモリ KVS](#42-インメモリ-kvs) を参照)。制限を超えた場合は `429 Too Many Requests` を返す。この判定は、各エンドポイントの処理フローには示さない。
+
+### 6.1 アテステーション準備エンドポイント
 
 {/*
 id: spec-attestation-options
@@ -510,7 +513,7 @@ flowchart TD
 Set-Cookie: webauthn_attestation_session=<セッション ID>; HttpOnly; Secure; SameSite=Strict; Max-Age=300; Path=/
 ~~~
 
-### 7.2 アテステーション結果受理エンドポイント
+### 6.2 アテステーション結果受理エンドポイント
 
 {/*
 id: spec-attestation-result
@@ -562,7 +565,7 @@ flowchart TD
 }
 ~~~
 
-### 7.3 アサーション準備エンドポイント
+### 6.3 アサーション準備エンドポイント
 
 {/*
 id: spec-assertion-options
@@ -599,7 +602,7 @@ flowchart TD
 Set-Cookie: webauthn_assertion_session=<セッション ID>; HttpOnly; Secure; SameSite=Strict; Max-Age=300; Path=/
 ~~~
 
-### 7.4 アサーション結果受理エンドポイント
+### 6.4 アサーション結果受理エンドポイント
 
 {/*
 id: spec-assertion-result
@@ -628,7 +631,7 @@ flowchart TD
     N10([POST /assertion/result 受信])
     N10 --> N20[[受信した認証アサーションの検証]]
     N20 --> |失敗| ERR1([403 Forbidden])
-    N20 --> |成功| N30{パスキーの revoked_at が NULL か}
+    N20 --> |成功| N30{パスキーが失効済みか}
     N30 --> |失効済み| ERR2([403 Forbidden])
     N30 --> |有効| N40{主体が凍結中か}
     N40 --> |凍結中| ERR3([403 Forbidden])
@@ -652,7 +655,7 @@ flowchart TD
 
 リフレッシュトークンは `Set-Cookie` ヘッダーで返す。
 
-### 7.5 JWKS エンドポイント
+### 6.5 JWKS エンドポイント
 
 {/*
 id: spec-jwks-endpoint
@@ -668,6 +671,8 @@ GET /.well-known/jwks.json
 #### レスポンス
 
 `200 OK` を返す。`Content-Type` は `application/json` とする。応答コンテントは JWK Set であり、Active スロットの公開鍵と、削除可能時刻を超えていない全ての Retired スロットの公開鍵を含む。同じ鍵が重複して含まれていてもよい。
+
+レスポンスには `Cache-Control: max-age=<n>` を付す。`n` は設定可能なパラメーターとする。
 
 各 JWK は `alg` パラメーターと `kid` パラメーターを含む。`kid` は JWK Thumbprint (base64url) である。
 
@@ -687,7 +692,7 @@ GET /.well-known/jwks.json
 }
 ~~~
 
-### 7.6 リフレッシュエンドポイント
+### 6.6 リフレッシュエンドポイント
 
 {/*
 id: spec-refresh
@@ -702,10 +707,10 @@ POST /refresh
 
 #### リクエスト
 
-| 場所            | 名前            | 説明                      |
-| --------------- | --------------- | ------------------------- |
-| Cookie          | `refresh_token` | リフレッシュトークン      |
-| JSON コンテント | `auth_token`    | 認証トークン (期限切れ可) |
+| 場所            | 名前                   | 説明                      |
+| --------------- | ---------------------- | ------------------------- |
+| Cookie          | `__Host-refresh_token` | リフレッシュトークン      |
+| JSON コンテント | `auth_token`           | 認証トークン (期限切れ可) |
 
 #### 処理フロー
 
@@ -745,7 +750,9 @@ flowchart TD
     end
 
     N110 --> |RT 以前| N115{typ が AT のものか}
-    N115 --> |AT| N120{主体が凍結中か}
+    N115 --> |AT| N118{パスキーが失効済みか}
+    N118 --> |失効済み| ERR12([403 Forbidden])
+    N118 --> |有効| N120{主体が凍結中か}
     N120 --> |凍結中| ERR11([403 Forbidden])
     N120 --> |正常| N130
     N115 --> |RCAT| N130
@@ -761,7 +768,7 @@ flowchart TD
         end
 
         N160 --> N170{競合が発生したか}
-        N170 --> |発生| ERR12([409 Conflict])
+        N170 --> |発生| ERR13([409 Conflict])
         N170 --> |なし| N180{{発行した AT/RCAT を応答コンテントに付加}}
         N180 --> N190{{発行した RT を Set-Cookie に付加}}
         N190 --> N200([200 OK])
@@ -849,7 +856,7 @@ dependencies: [spec-refresh]
 
 リフレッシュトークンは `Set-Cookie` ヘッダーで返す。
 
-### 7.7 リフレッシュトークンの失効エンドポイント
+### 6.7 リフレッシュトークンの失効エンドポイント
 
 {/*
 id: spec-revoke
@@ -864,10 +871,10 @@ POST /revoke
 
 #### リクエスト
 
-| 場所            | 名前            | 内容                      |
-| --------------- | --------------- | ------------------------- |
-| Cookie          | `refresh_token` | リフレッシュトークン      |
-| JSON コンテント | `auth_token`    | 認証トークン (期限切れ可) |
+| 場所            | 名前                   | 内容                      |
+| --------------- | ---------------------- | ------------------------- |
+| Cookie          | `__Host-refresh_token` | リフレッシュトークン      |
+| JSON コンテント | `auth_token`           | 認証トークン (期限切れ可) |
 
 #### 処理フロー
 
@@ -897,7 +904,7 @@ id: spec-revoke-idempotency
 dependencies: [spec-revoke, spec-audit-events]
 */}
 
-`rt:{sub}:{sid}` が既に削除されている場合、または提示されたリフレッシュトークンのハッシュが現在の値と一致しない場合、`403 Forbidden` ではなく `200 OK` を返す。これにより、同一のリフレッシュトークンを用いた複数回の `POST /revoke` 呼び出しは冪等となる。ただし、実際に `rt:{sub}:{sid}` を削除した場合と、削除対象が存在しなかった場合とは、監査ログ上は区別して記録する ([9.1 記録対象イベント](#91-記録対象イベント) を参照)。
+`rt:{sub}:{sid}` が既に削除されている場合、または提示されたリフレッシュトークンのハッシュが現在の値と一致しない場合、`403 Forbidden` ではなく `200 OK` を返す。これにより、同一のリフレッシュトークンを用いた複数回の `POST /revoke` 呼び出しは冪等となる。ただし、実際に `rt:{sub}:{sid}` を削除した場合と、削除対象が存在しなかった場合とは、監査ログ上は区別して記録する ([8.1 記録対象イベント](#91-記録対象イベント) を参照)。
 
 #### レスポンス
 
@@ -906,7 +913,7 @@ dependencies: [spec-revoke, spec-audit-events]
 `Content-Type` は `application/json`、ボディは `{}` とする。AT と RT の `sub` が一致する場合、リフレッシュトークンの Cookie は `Max-Age=0` によりクライアント側でも削除する。
 
 ~~~http
-Set-Cookie: refresh_token=; HttpOnly; Secure; SameSite=Strict; Max-Age=0; Path=/
+Set-Cookie: __Host-refresh_token=; HttpOnly; Secure; SameSite=Strict; Max-Age=0; Path=/
 ~~~
 
 AT と RT の `sub` が不一致の場合、セッションには何もせずに `200 OK` を返す。この状態では `POST /refresh` は失敗し、クライアントは RT を用いた再認証ができない。認証トークンの有効期限 (最大 5 分) が切れた時点で認証は自然に終了する。
@@ -922,11 +929,11 @@ dependencies: [spec-refresh-at-role, spec-refresh-at-iat, pol-revoke-no-authoriz
 
 リフレッシュの場合とは異なり、リフレッシュトークン以前に発行されたことは要求しない。
 
-### 7.8 リカバリーコードによる認証エンドポイント
+### 6.8 リカバリーコードによる認証エンドポイント
 
 {/*
 id: spec-recovery
-dependencies: [pol-recovery, pol-recovery-not-frozen, spec-rcat, spec-code-hash-lookup, spec-session-id, spec-kvs-session-keys]
+dependencies: [pol-recovery, pol-recovery-not-restricted, spec-rcat, spec-code-hash-lookup, spec-session-id, spec-kvs-session-keys]
 */}
 
 ~~~
@@ -939,10 +946,10 @@ POST /recovery
 
 {/*
 id: spec-recovery-ratelimit
-dependencies: [spec-ratelimit-counter]
+dependencies: [spec-ratelimit-all-endpoints]
 */}
 
-ブルートフォース攻撃を防ぐため、IP アドレス単位のレート制限を適用する ([4.2 インメモリ KVS](#42-インメモリ-kvs) を参照)。`recovery_code` を消費するよりも前に判定する。制限を超えた場合は `429 Too Many Requests` を返す。
+ブルートフォース攻撃を防ぐため、レート制限は、`recovery_code` を消費するよりも前に判定する。
 
 #### リクエスト
 
@@ -955,16 +962,14 @@ id: spec-recovery-code-trailing-bits
 dependencies: [spec-recovery-code-format, spec-recovery]
 */}
 
-`recovery_code` を base32 として復号したとき、RFC 4648 §3.5 のパッドビットが 0 でない場合は、存在しないコードとして扱う。
+`recovery_code` を base32 として復号したとき、パッドビット (RFC 4648 §3.5) が 0 でない場合は、存在しないコードとして扱う。
 
 #### 処理フロー
 
 ~~~mermaid
 flowchart TD
     N10([POST /recovery 受信])
-    N10 --> N15{IP 単位のレート制限を超過していないか}
-    N15 --> |超過| ERR3([429 Too Many Requests])
-    N15 --> |範囲内| N20[(recovery_codes を code_hash で検索)]
+    N10 --> |範囲内| N20[(recovery_codes を recovery_code のハッシュで検索)]
     N20 --> |存在しない| ERR1([401 Unauthorized])
     N20 --> |存在する| N30[(未使用かつ有効なら used_at を記録)]
     N30 --> |更新 0 行| ERR2([401 Unauthorized])
@@ -1003,7 +1008,7 @@ AND revoked_at IS NULL;
 
 リフレッシュトークンは `Set-Cookie` ヘッダーで返す。
 
-### 7.9 リカバリーコード再発行エンドポイント
+### 6.9 リカバリーコード再発行エンドポイント
 
 {/*
 id: spec-recovery-codes-reissue
@@ -1033,14 +1038,14 @@ flowchart TD
     N25 --> |期限切れ| ERR2([401 Unauthorized])
     N25 --> |期限内| N30{typ が &quot;at+jwt&quot; か}
     N30 --> |非 AT| ERR3([400 Bad Request])
-    N30 --> |AT| N40[(未使用のリカバリーコードの revoked_at を記録)]
-    N40 --> N50{{リカバリーコードを 10 個生成}}
-    N50 --> N60[("リカバリーコードのハッシュを RDB に保存")]
+    N30 --> |AT| N40{{リカバリーコードを 10 個生成}}
+    N40 --> N50[(未使用のリカバリーコードの失効日時を記録)]
+    N50 --> N60[(新しいリカバリーコードのハッシュを RDB に保存)]
     N60 --> N70{{リカバリーコードを応答コンテントに付加}}
     N70 --> N80([200 OK])
 ~~~
 
-既存の未使用リカバリーコードの失効 (`revoked_at` の記録) は、新規コードの発行に先立って行う。
+既存の未使用リカバリーコードの失効 (失効日時の記録) と新規コードのハッシュの保存は原子的に行う。
 
 ~~~sql
 UPDATE recovery_codes
@@ -1079,7 +1084,7 @@ AND revoked_at IS NULL;
   {}
   ~~~
 
-### 7.10 パスキー一覧取得エンドポイント
+### 6.10 パスキー一覧取得エンドポイント
 
 {/*
 id: spec-passkeys-list
@@ -1129,7 +1134,7 @@ flowchart TD
 }
 ~~~
 
-失効済み (`revoked_at` が非 NULL) のパスキーは一覧に含めない。
+失効済みのパスキーは一覧に含めない。
 
 失敗時は `400 Bad Request` または `401 Unauthorized` を返す。`401 Unauthorized` の場合、`Content-Type` は `application/json` とする。
 
@@ -1145,11 +1150,11 @@ flowchart TD
   {}
   ~~~
 
-### 7.11 パスキー失効エンドポイント
+### 6.11 パスキー失効エンドポイント
 
 {/*
 id: spec-passkey-revoke
-dependencies: [pol-recovery, spec-at, spec-passkeys-table]
+dependencies: [pol-recovery, spec-at, spec-passkeys-table, spec-kvs-session-keys]
 */}
 
 ~~~
@@ -1186,11 +1191,16 @@ flowchart TD
     N40 --> |存在しない| ERR4([404 Not Found])
     N40 --> |存在する| N45{当該主体に他の有効なパスキーが存在するか}
     N45 --> |存在しない| ERR5([400 Bad Request])
-    N45 --> |存在する| N50[(revoked_at を記録)]
+    N45 --> |存在する| N50[(失効日時を記録)]
     N50 --> N60([204 No Content])
 ~~~
 
 主体が持つ最後の 1 件のパスキーは失効させられない。
+
+パスキーの失効に成功したとき、その主体のすべてのセッションを失効させる。
+{/* TODO: そのパスキーで開始したセッションのみ失効すればよいのでは */}
+
+{/* TODO: 主体のすべてのセッションを列挙する手段 (`rt:{sub}:*` の走査、または主体ごとの索引) */}
 
 #### レスポンス
 
@@ -1212,7 +1222,7 @@ flowchart TD
   {}
   ~~~
 
-## 8. セッション管理
+## 7. セッション管理
 
 {/*
 id: spec-session-store
@@ -1221,7 +1231,7 @@ dependencies: [spec-kvs-session-keys]
 
 セッションの失効とリフレッシュトークンの再利用検知を実現するために、現行トークンと使用済みトークンのハッシュをセッションストアに保持する。
 
-### 8.1 現行トークン
+### 7.1 現行トークン
 
 {/*
 id: spec-rt-current
@@ -1236,7 +1246,7 @@ dependencies: [spec-session-store]
 
 TTL はリフレッシュトークンの `exp` よりも 1 分長く設定する。セッションストア上の TTL はガベージコレクションのための値であり、トークンの有効期限ではない。トークンの有効期限はトークン自体の `exp` で表現されている。
 
-### 8.2 使用済みトークン (再利用検知用)
+### 7.2 使用済みトークン (再利用検知用)
 
 {/*
 id: spec-rt-spent
@@ -1305,9 +1315,9 @@ dependencies: [spec-rt-spent, spec-rt-current]
 
 この判定順序により、**有効期限内の使用済み RT のみ**が再利用として扱われる。
 
-## 9. 監査ログ
+## 8. 監査ログ
 
-### 9.1 記録対象イベント
+### 8.1 記録対象イベント
 
 {/*
 id: spec-audit-events
@@ -1323,6 +1333,7 @@ dependencies: [pol-audit-gdpr]
 | 認証成功                                          | `sub`・`sid`・タイムスタンプ                     |                                                                                                      |
 | 認証失敗                                          | IP アドレス・タイムスタンプ・失敗理由            |                                                                                                      |
 | 凍結中の認証試行                                  | `sub`・タイムスタンプ                            |                                                                                                      |
+| 失効済みパスキーのセッションのリフレッシュ試行    | `sub`・`sid`・`credential_id`・タイムスタンプ    |                                                                                                      |
 | セッション失効                                    | `sub`・`sid`・タイムスタンプ                     | `POST /revoke` で実際に `rt:{sub}:{sid}` を削除した場合のみ。自然失効および no-op の場合は記録しない |
 | RT 再利用検知                                     | `sub`・`sid`・提示 RT ハッシュ・タイムスタンプ   | セッション強制終了を伴う                                                                             |
 | AT/RCAT と RT の sub が不一致                     | AT/RCAT の sub・RT の sub・`sid`・タイムスタンプ | `POST /refresh` は 401、`POST /revoke` は 200                                                        |
@@ -1330,10 +1341,10 @@ dependencies: [pol-audit-gdpr]
 | RT 不正 (`typ` 不一致・期限切れ・未知の `sid` 等) | `sub`・失敗理由・タイムスタンプ                  |                                                                                                      |
 | リカバリーコード使用                              | `sub`・成否・タイムスタンプ                      |                                                                                                      |
 | リカバリーコード再発行                            | `sub`・タイムスタンプ                            | `POST /recoveryCodes/reissue` 成功時                                                                 |
-| レート制限超過                                    | `sub`・タイムスタンプ                            |                                                                                                      |
+| レート制限超過                                    | IP アドレス・エンドポイント・タイムスタンプ      |                                                                                                      |
 | 鍵ローテーション実行                              | 旧 `kid`・新 `kid`・タイムスタンプ               | 構成変更の監査用                                                                                     |
 
-### 9.2 IP アドレスの記録について
+### 8.2 IP アドレスの記録について
 
 {/*
 id: spec-audit-ip
@@ -1402,7 +1413,9 @@ id: prem-passkey-may-be-personal-data
 id: prin-encoding-by-path
 */}
 
-データの表示形式は、そのデータの経路に応じて選ぶ。人が書き留めることがあるデータには base32 を、JWS や URL に載ることがあるデータには base64url を、それ以外のデータには base64 を用いる。個々のデータがどの形式で表示されるかは、そのデータの仕様に記述する。
+バイトデータの表示形式は、そのデータの経路に応じて選ぶ。人が書き留めることがあるデータには base32 を、JWS や URL に載ることがあるデータには base64url を、それ以外のデータには base64 を用いる。個々のデータがどの形式で表示されるかは、そのデータの仕様に記述する。
+
+UUID は、RFC 9562 §4 で hex-and-dash 文字列形式で表すことが推奨されているため、この原則の対象としない。
 
 ### A.3 方針
 
@@ -1424,14 +1437,14 @@ id: pol-recovery
 
 認証器をすべて失ったときのためのデータ保全手段として、リカバリーコードによる認証を提供する。
 
-#### リカバリーは凍結によって制限されない
+#### リカバリーは凍結やパスキーの失効によって制限されない
 
 {/*
-id: pol-recovery-not-frozen
+id: pol-recovery-not-restricted
 dependencies: [pol-recovery]
 */}
 
-リカバリーはユーザーデータへのアクセス権を保障するための機能であり、凍結によっても制限されない。
+リカバリーはユーザーデータへのアクセス権を保障するための機能であり、凍結やパスキーの失効によっても制限されない。
 
 #### 主体は ID のみの存在とする
 
@@ -1525,7 +1538,7 @@ dependencies: [spec-session-id]
 
 セッション ID はリフレッシュトークンの一部として発行され、署名されているため、たとえ攻撃者がセッション ID の推測に成功したとしても、リフレッシュトークンの署名を偽装したり、`rt:{sub}:{sid}` の値を盗取し、推測したセッション ID を含む有効なリフレッシュトークンを導出したりすることは事実上不可能である。
 
-ただし、Active スロット ([6. 鍵ローテーション](#6-鍵ローテーション)) の秘密鍵が漏洩している場合、攻撃者は、対象セッションの `sid` を計算し、その `sid` を含むリフレッシュトークンを署名することで、既存のセッションを奪取できる。よって、セッション ID の暗号学的安全性は、既存セッション奪取に対する防禦層のひとつとして機能する。
+ただし、Active スロット ([5. 鍵ローテーション](#6-鍵ローテーション)) の秘密鍵が漏洩している場合、攻撃者は、対象セッションの `sid` を計算し、その `sid` を含むリフレッシュトークンを署名することで、既存のセッションを奪取できる。よって、セッション ID の暗号学的安全性は、既存セッション奪取に対する防禦層のひとつとして機能する。
 
 #### `EXPIRE` に `NX` を指定する理由
 
@@ -1567,6 +1580,15 @@ dependencies: [spec-auth-condition]
 
 {/* TODO: 署名アルゴリズムを鍵の種類から自動導出せず、生成時に明示的に宣言する理由 (spec-key-slots) */}
 
+#### リフレッシュトークンの Cookie に `__Host-` を付ける理由
+
+{/*
+id: why-host-prefix
+dependencies: [spec-rt-delivery, spec-same-site]
+*/}
+
+`__Host-` プレフィックスを付けた Cookie は、ブラウザーが、`Secure` 属性があり、`Path=/` で、`Domain` 属性を持たない場合にだけ受け付ける。クライアントアプリと認証サービスは同一サイトに置かれるため、同じサイトの別のホストが、`Domain` 属性を付けて同名の Cookie を設定し、リフレッシュトークンの Cookie を上書きする余地がある。プレフィックスは、これを防ぐ。
+
 ### B.3 鍵ローテーションの根拠
 
 #### 削除可能時刻まで鍵 A の公開鍵を含め続ける理由
@@ -1596,7 +1618,16 @@ id: why-no-partial-rotation
 dependencies: [spec-rotation-emergency, spec-key-slots, prem-leak-exposes-all-keys]
 */}
 
-Active スロットと Retired スロットの鍵はいずれも、同一の認証サービスプロセスのメモリ上に保持されている ([6.1 鍵スロットの構成](#61-鍵スロットの構成)) ところ、鍵漏洩を引き起こす典型的な事象は、その時点でメモリ上に存在する鍵をまとめて暴露する。したがって、漏洩範囲が特定の 1 つの鍵に限定できるという前提を置くことはできないため、削除する鍵を限定したローテーション手順は規定しない。
+Active スロットと Retired スロットの鍵はいずれも、同一の認証サービスプロセスのメモリ上に保持されている ([5.1 鍵スロットの構成](#61-鍵スロットの構成)) ところ、鍵漏洩を引き起こす典型的な事象は、その時点でメモリ上に存在する鍵をまとめて暴露する。したがって、漏洩範囲が特定の 1 つの鍵に限定できるという前提を置くことはできないため、削除する鍵を限定したローテーション手順は規定しない。
+
+#### JWKS のキャッシュに最大寿命を設け、再取得時に置き換える理由
+
+{/*
+id: why-jwks-cache-bound
+dependencies: [spec-rotation-emergency, spec-jwks-endpoint, spec-verifier-requirements]
+*/}
+
+緊急ローテーションで旧鍵を JWKS から外しても、機能サービスのキャッシュに旧鍵が残っている間は、その鍵で署名されたトークンが受け入れられる。鍵が漏洩している場合、攻撃者は有効期限を自由に決めたトークンを作れるため、受け入れられる期間は、トークンの有効期限ではなく、キャッシュの寿命で決まる。また、既知の `kid` では再取得が起きないため、最大寿命がなければ、旧鍵は受け入れられつづける。
 
 ### B.4 エンドポイントの根拠
 
@@ -1693,6 +1724,25 @@ dependencies: [spec-passkey-revoke, spec-session-kind]
 */}
 
 失効させると、その主体は認証手段をすべて失う。リカバリーセッションはユーザーデータの取得と削除申請のみに限定されており、通常認証の代替にはならない。
+
+#### 失効したパスキーで確立したセッションをリフレッシュさせない理由
+
+{/*
+id: why-session-bound-to-passkey
+dependencies: [spec-passkey-revoke, spec-refresh]
+*/}
+
+{/* TODO: 理由になっていない */}
+リフレッシュは、認証済みの主体の再認証である。セッションの認証を支えているのは、確立に使ったパスキーなので、そのパスキーが失効すれば、再認証は成り立たない。リフレッシュを許すと、紛失した端末のセッションが、パスキーの失効後も維持され、失効の目的を果たせない。
+
+#### リカバリーコードの再発行で、失効と保存を原子的に行う理由
+
+{/*
+id: why-reissue-atomic
+dependencies: [spec-recovery-codes-reissue]
+*/}
+
+失効と保存が別の操作だと、途中で失敗したときに、利用者の未使用のリカバリーコードがすべて失効し、新しいコードが保存されない状態になりうる。
 
 ### B.5 セッション管理の根拠
 
