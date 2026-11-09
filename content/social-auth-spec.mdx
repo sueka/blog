@@ -133,11 +133,11 @@ slug: social-auth
 {/* { "id": "spec-ratelimit-counter", "dependencies": ["prem-tcp-source-not-client", "spec-reverse-proxy"] } */}
 #### レート制限カウンター (`ratelimit`)
 
-| キー                        | データ型 | 説明                               |
-| --------------------------- | -------- | ---------------------------------- |
-| `ratelimit:{ip}:{endpoint}` | String   | 時間窓内のエンドポイントの試行回数 |
+| キー                        | データ型 | 説明                                     |
+| --------------------------- | -------- | ---------------------------------------- |
+| `ratelimit:{ip}:{endpoint}` | String   | 固定時間窓の中でリクエストを送信した回数 |
 
-`{ip}` はクライアントの IP アドレス (RFC 3986 Appendix A の IPv6address または IPv4address)、`{endpoint}` はエンドポイント定義 ([6. エンドポイント](#6-エンドポイント)の各節冒頭で定義される、`POST /attestation/options` 形式の文字列) である。クライアントの IP アドレスの取得元は設定可能なパラメーターとする。
+`{ip}` はクライアントの IP アドレス (RFC 3986 Appendix A の IPv6address または IPv4address)、`{endpoint}` はエンドポイント定義 ([6. エンドポイント](#6-エンドポイント)の各節の冒頭で定義される、`METHOD /path/to/endpoint` 形式の文字列) である。クライアントの IP アドレスの取得元は設定可能とする。
 
 {/* { "id": "spec-token-kinds" } */}
 ## 4. トークン
@@ -151,18 +151,15 @@ slug: social-auth
 | リフレッシュトークン (RT)     | 1 日     |
 
 {/* { "id": "spec-jws-compact", "dependencies": ["spec-token-kinds"] } */}
-JWS は、JWS Compact Serialization (RFC 7515) の形式とする。
+JWS は JWS Compact Serialization (RFC 7515) の形式とする。
 
 {/* { "id": "spec-auth-token", "dependencies": ["spec-token-kinds"] } */}
 ### 4.1 認証トークン
 
 認証トークンは**認証事実**を表現する。
 
-*アサーション結果受理* (`POST /assertion/result`)、*リフレッシュ* (`POST /refresh`) または*リカバリーコードによる認証* (`POST /recovery`) の結果として発行される。有効期限は 5 分間。
+*アサーション結果受理* (`POST /assertion/result`)、*リフレッシュ* (`POST /refresh`)、および*リカバリーコードによる認証* (`POST /recovery`) の結果として発行される。有効期限は 5 分間とする。
 {/* 認証トークンの有効期限は、認証要素 (認証器、リフレッシュトークンまたはリカバリーコード) の認証力の減衰に対する許容時間窓として機能する。 */}
-
-{/* { "id": "spec-stateless-token", "dependencies": ["spec-auth-token"] } */}
-認証トークンはステートレスであるため、発行済みのものは最大 5 分間行使できる。
 
 #### ヘッダー
 
@@ -221,15 +218,17 @@ JWS は、JWS Compact Serialization (RFC 7515) の形式とする。
 認証トークンとして提示されたトークンが次の条件をすべて満たすとき、かつそのときに限り、そのトークンの `sub` で表される主体が*認証されている*と見做す。この条件を*通常の認証条件*という:
 
 - そのトークンが*正規の公開鍵*によって検証される
+- そのトークンの `alg` が `"none"` でない
+- そのトークンの `alg` がそのトークンの署名鍵の*意図された*署名アルゴリズムの名称と一致する
 - そのトークンが*認証トークン*である (`typ` が `"at+jwt"` / `"rcat+jwt"` である)
 - そのトークンが期限切れでない (`exp` が現在時刻よりも後である)
-- そのトークンの `alg` が `"none"` でない
-- そのトークンの `alg` が、そのトークンのヘッダーの `kid` に対応する鍵に紐づけられた署名アルゴリズムの名称と一致する
 
-正規の公開鍵は次のものをいう:
+*正規の公開鍵*とは次のものをいう:
 
-- 認証サービスでは、*Active スロット*の鍵と、現在時刻が削除可能時刻を越えていない全ての *Retired スロット*の鍵。各鍵には、鍵の種類 (`kty`/`crv`) によらず、生成時に明示的に選択・宣言された署名アルゴリズムが紐づく ([5.1 鍵スロットの構成](#51-鍵スロットの構成) を参照)。
+- 認証サービスでは、*Active スロット*の公開鍵と、削除可能時刻を超えていない全ての *Retired スロット*の公開鍵。
 - 機能サービスでは、*JWKS エンドポイント*から取得した JWK またはそのキャッシュ。署名アルゴリズムは、その JWK の `alg` フィールドの値とする。
+
+*意図された*署名アルゴリズムとは、`kid` に対応する鍵に紐づけられた署名アルゴリズム
 
 トークンが正規の公開鍵によって*検証される*とは、`kid` に対応する鍵に紐づけられた署名アルゴリズムを用いて、そのトークンの署名が有効であることが確認できることをいう。このとき、検証に使用する署名アルゴリズムを、トークンのヘッダーの `alg` から選択してはならない。
 
@@ -257,6 +256,28 @@ JWS は、JWS Compact Serialization (RFC 7515) の形式とする。
 
 {/* { "id": "spec-elevate-auth", "dependencies": ["spec-assertion-options", "spec-passkeys-revoke", "spec-sessions-revoke", "spec-sessions-revoke-all"] } */}
 クライアントアプリは、昇格認証の要求を示す応答を受け取った場合、*アサーション準備* (`POST /assertion/options`) を試み、アサーションに成功した場合、元のリクエストを再試行することができる。
+
+#### 受け入れフロー
+
+~~~mermaid
+flowchart TD
+    N10([提示されたトークン])
+    N10 --> N20{署名検証}
+    N20 --> |失敗| ERR1([401 Unauthorized])
+    N20 --> |成功| N30{typ が AT/RCAT のものか}
+    N30 --> |非 AT| ERR2([400 Bad Request])
+    N30 --> |AT| N40{exp が期限内か}
+    N40 --> |期限切れ| ERR3([401 Unauthorized])
+    N40 --> |期限内| N45{alg が &quot;none&quot; でないか}
+    N45 --> |&quot;none&quot;| ERR35([401 Unauthorized])
+    N45 --> |&quot;none&quot; でない| N47{alg が妥当な署名アルゴリズムか}
+    N47 --> |妥当でない| ERR37([401])
+    N47 --> |妥当| N50{sub が RT と一致するか}
+    N50 --> |不一致| ERR4([401 Unauthorized])
+    N50 --> |一致| N60{iat が RT 以前か}
+    N60 --> |RT より後| ERR5([400 Bad Request])
+    N60 --> |RT 以前| N70([受け入れ済み AT])
+~~~
 
 ---
 
@@ -291,6 +312,33 @@ JWS は、JWS Compact Serialization (RFC 7515) の形式とする。
 Set-Cookie: __Host-refresh_token=<リフレッシュトークン>; HttpOnly; Secure; SameSite=Strict; Max-Age=86400; Path=/
 ~~~
 
+#### 受け入れフロー
+
+リフレッシュトークン
+
+~~~mermaid
+flowchart TD
+    N10([提示されたトークン])
+    N10 --> N20{署名検証}
+    N20 --> |失敗| ERR1([403 Forbidden])
+    N20 --> |成功| N25{alg が}
+    N25 --> |
+    N30{typ が RT のものか}
+    N30 --> |非 RT| ERR2([403 Forbidden])
+    N30 --> |RT| N40{exp が期限内か}
+    N40 --> |期限切れ| ERR3([403 Forbidden])
+    N40 --> |期限内| N50[/"rt:{sub}:{sid} を取得"/]
+    N50 --> |存在しない| ERR4([403 Forbidden])
+    N50 --> |存在する| N60{提示された RT のハッシュと一致するか}
+    N60 --> |不一致| N70{{"rt_spent:{sub}:{sid} から期限切れエントリを削除"}}
+    N70 --> N80{"提示された RT のハッシュが rt_spent:{sub}:{sid} に含まれないか"}
+    N80 --> |含まれる| N90[/"rt:{sub}:{sid} と rt_spent:{sub}:{sid} を削除"/]
+    N90 --> ERR5([403 Forbidden])
+    N80 --> |含まれない| ERR6([403 Forbidden])
+    N60 --> |一致| N100([受け入れ済み RT])
+~~~
+
+
 ## 5. 鍵ローテーション
 
 {/* { "id": "spec-key-slots" } */}
@@ -303,7 +351,7 @@ Set-Cookie: __Host-refresh_token=<リフレッシュトークン>; HttpOnly; Sec
 | **Active**  | 現在トークンの署名・検証に使用している鍵。秘密鍵と公開鍵を保持する。同時に 1 組存在する。                |
 | **Retired** | 過去トークンの署名に使用していた鍵。公開鍵と削除可能時刻のペアのリストを保持する。同時に複数存在しうる。 |
 
-各鍵は、鍵の種類 (`kty`/`crv`) に加えて、その鍵とともに生成時に明示的に選択・宣言された署名アルゴリズムを保持する。署名アルゴリズムは鍵の種類から自動的に導出しない。鍵の種類と署名アルゴリズムの組は、JWKS では JWK の `kty`/`crv` と `alg` として表れる。
+メモリ上の鍵はそれぞれ、鍵の種類 (`kty`/`crv`) に加えて、その鍵とともに生成時に明示的に選択・宣言された署名アルゴリズムを保持する。署名アルゴリズムは鍵の種類から自動的に導出しない。鍵の種類と署名アルゴリズムの組は、JWKS では JWK の `kty`/`crv` と `alg` として表れる。
 
 移行期間中は、Active・Retired の各スロットに、異なる鍵の種類 (たとえば EC と OKP) の鍵が混在しうる。
 
@@ -352,8 +400,7 @@ Set-Cookie: __Host-refresh_token=<リフレッシュトークン>; HttpOnly; Sec
 ~~~redis
 MULTI
 INCR ratelimit:{ip}:{endpoint}
-EXPIRE ratelimit:{ip}:{endpoint} <時間窓の長さ> NX
-EXEC
+EXPIRE ratelimit:{ip}:{endpoint} <time_window_length> NX
 ~~~
 
 `INCR` の結果が閾値を超えている場合、`429 Too Many Requests` を返す。
@@ -550,11 +597,9 @@ GET /.well-known/jwks.json
 
 #### レスポンス
 
-`200 OK` を返す。`Content-Type` は `application/json` とする。応答コンテントは JWK Set であり、Active スロットの公開鍵と、削除可能時刻を超えていない全ての Retired スロットの公開鍵を含む。同じ鍵が重複して含まれていてもよい。
+`200 OK` を返す。`Content-Type` は `application/json` とし、`Cache-Control` は設定可能とする。
 
-レスポンスには `Cache-Control: max-age=<n>` を付す。`n` は設定可能なパラメーターとする。
-
-各 JWK は `alg` パラメーターと `kid` パラメーターを含む。`kid` は JWK Thumbprint (base64url) である。
+応答コンテントは、*Active スロット*の公開鍵と、削除可能時刻を超えていない全ての *Retired スロット*の公開鍵を含む、JWK Set である。同じ鍵が重複して含まれていてもよい。各 JWK は `alg` パラメーターと `kid` パラメーターを含む。`kid` は JWK Thumbprint (base64url) である。
 
 ~~~json
 {
@@ -593,67 +638,33 @@ POST /refresh
 ~~~mermaid
 flowchart TD
     N10([POST /refresh 受信])
-    N10 --> N20
-
-    subgraph SG1[RT 受け入れ]
-        N20{RT の署名検証}
-        N20 --> |失敗| ERR1([403 Forbidden])
-        N20 --> |成功| N22{typ が RT のものか}
-        N22 --> |非 RT| ERR6([403 Forbidden])
-        N22 --> |RT| N25{exp が期限内か}
-        N25 --> |期限切れ| ERR2([403 Forbidden])
-        N25 --> |期限内| N30[/"rt:{sub}:{sid} を取得"/]
-        N30 --> |存在しない| ERR3([403 Forbidden])
-        N30 --> |存在する| N40{提示された RT のハッシュと一致するか}
-        N40 --> |不一致| N55{{"rt_spent:{sub}:{sid} から期限切れエントリを削除"}}
-        N55 --> N60{"提示された RT のハッシュが rt_spent:{sub}:{sid} に含まれないか"}
-        N60 --> |含まれる| N70[/"rt:{sub}:{sid} と rt_spent:{sub}:{sid} を削除"/]
-        N70 --> ERR4([403 Forbidden])
-        N60 --> |含まれない| ERR5([403 Forbidden])
-    end
-
-    N40 --> |一致| N90
-
-    subgraph SG2[AT/RCAT 受け入れ]
-        N90{AT/RCAT の署名検証}
-        N90 --> |失敗| ERR7([401 Unauthorized])
-        N90 --> |成功| N95{typ が AT/RCAT のものか}
-        N95 --> |非 AT/RCAT| ERR8([400 Bad Request])
-        N95 --> |AT/RCAT| N100{sub が RT と一致するか}
-        N100 --> |不一致| ERR9([401 Unauthorized])
-        N100 --> |一致| N110{iat が RT 以前か}
-        N110 --> |RT より後| ERR10([400 Bad Request])
-    end
-
-    N110 --> |RT 以前| N115{typ が AT のものか}
+    N10 --> N20[[RT 受け入れ\n(署名, typ, exp, ハッシュ, 再利用検知)]]
+    N20 --> N90[[AT/RCAT 受け入れ\n(署名, typ, sub, iat)]]
+    N90 --> N115{typ が AT のものか RCAT のものか}
     N115 --> |AT| N120{主体が凍結中か}
     N120 --> |凍結中| ERR11([403 Forbidden])
     N120 --> |正常| N130
-    N115 --> |RCAT| N130
+    N115 --> |RCAT| N130["新しい AT/RCAT と RT を同時発行"]
+    N130 --> N140
 
-    subgraph SG3[トークン発行]
-        N130["新しい AT/RCAT と RT を同時発行"]
-        N130 --> N140
-
-        subgraph SG3A["現行トークンの差し替え"]
-            N140[/"発行した RT のハッシュを rt:{sub}:{sid} に記録"/]
-            N140 --> N150[/"消費した RT のハッシュを rt_spent:{sub}:{sid} に追加"/]
-            N150 --> N160[/"rt_spent:{sub}:{sid} の TTL を発行した RT の exp より 1 分長く設定"/]
-            N160 --> N165[/"sessions:{sub} の sid のフィールドの TTL を発行した RT の exp より 1 分長く設定"/]
-        end
-
-        N165 --> N170{競合が発生したか}
-        N170 --> |発生| ERR13([409 Conflict])
-        N170 --> |なし| N180{{発行した AT/RCAT を応答コンテントに付加}}
-        N180 --> N190{{発行した RT を Set-Cookie に付加}}
-        N190 --> N200([200 OK])
+    subgraph SG3A["現行トークンの差し替え"]
+        N140[/"発行した RT のハッシュを rt:{sub}:{sid} に記録"/]
+        N140 --> N150[/"消費した RT のハッシュを rt_spent:{sub}:{sid} に追加"/]
+        N150 --> N160[/"rt_spent:{sub}:{sid} の TTL を発行した RT の exp より 1 分長く設定"/]
+        N160 --> N165[/"sessions:{sub} の sid のフィールドの TTL を発行した RT の exp より 1 分長く設定"/]
     end
+
+    N165 --> N170{競合が発生したか}
+    N170 --> |発生| ERR13([409 Conflict])
+    N170 --> |なし| N180{{発行した AT/RCAT を応答コンテントに付加}}
+    N180 --> N190{{発行した RT を Set-Cookie に付加}}
+    N190 --> N200([200 OK])
 ~~~
 
 {/* { "id": "spec-refresh-at-role", "dependencies": ["spec-refresh-semantics"] } */}
 #### 認証トークンの役割
 
-`POST /refresh` における認証トークンには、リフレッシュ対象の主体が認証済みの主体であることを確認する役割がある。
+*リフレッシュ* (`POST /refresh`) における認証トークンには、リフレッシュ対象の主体が認証済みの主体であることを確認する役割がある。
 
 {/* { "id": "spec-refresh-semantics", "dependencies": ["spec-refresh-token"] } */}
 リフレッシュとは認証済みの主体の再認証である。リフレッシュトークンは認証事実を表現しないため、リフレッシュトークンの `sub` は認証済みの主体ではなく、単にリフレッシュ対象の主体を表す。
@@ -664,7 +675,7 @@ flowchart TD
 {/* { "id": "spec-refresh-concurrency", "dependencies": ["spec-kvs-session-keys", "spec-refresh-swap"] } */}
 #### 並列リクエスト対策
 
-同一セッションに対する `POST /refresh` が並列に呼び出されても KVS エントリの更新が競合しないよう、`rt:{sub}:{sid}` を楽観ロックする。
+同一セッションに対する*リフレッシュ*が並列にリクエストされても KVS エントリの更新が競合しないよう、`rt:{sub}:{sid}` を楽観ロックする。
 
 ~~~redis
 WATCH rt:{sub}:{sid}
@@ -730,17 +741,9 @@ POST /revoke
 ~~~mermaid
 flowchart TD
     N10([POST /revoke 受信])
-    N10 --> N20{RT の署名検証}
-    N20 --> |失敗| ERR1([403 Forbidden])
-    N20 --> |成功| N30[/"rt:{sub}:{sid} を取得"/]
-    N30 --> N40{提示された RT のハッシュと一致するか}
-    N40 --> N50{"AT/RCAT の署名検証"}
-    N50 --> |失敗| ERR4([401 Unauthorized])
-    N50 --> |成功| N55{typ が AT/RCAT のものか}
-    N55 --> |非 AT/RCAT| ERR5([400 Bad Request])
-    N55 --> |AT/RCAT| N60{sub が RT と一致するか}
-    N60 --> |不一致| N70([200 OK])
-    N60 --> |一致| N65{"rt:{sub}:{sid} が提示された RT のハッシュと一致していたか"}
+    N10 --> N20[[RT 受け入れ\n署名, ハッシュ\nハッシュ不在は 200]]
+    N20 --> N50[[AT/RCAT 受け入れ\n(署名, typ, sub, sub 不一致は 200)]]
+    N50 --> N65{"rt:{sub}:{sid} が提示された RT のハッシュと一致していたか"}
     N65 --> |一致| N80[/"rt:{sub}:{sid} と rt_spent:{sub}:{sid} を削除"/]
     N65 --> |不一致| N85([200 OK])
     N80 --> N90([200 OK])
@@ -755,13 +758,15 @@ flowchart TD
 
 成功時は `200 OK` を返す。
 
-`Content-Type` は `application/json`、ボディは `{}` とする。AT と RT の `sub` が一致する場合、リフレッシュトークンの Cookie は `Max-Age=0` によりクライアント側でも削除する。
+`Content-Type` は `application/json`、ボディは `{}` とする。認証トークンとリフレッシュトークンの `sub` が一致する場合、リフレッシュトークンの Cookie は `Max-Age=0` によりクライアント側でも削除する。
 
 ~~~http
 Set-Cookie: __Host-refresh_token=; HttpOnly; Secure; SameSite=Strict; Max-Age=0; Path=/
 ~~~
 
-AT と RT の `sub` が不一致の場合、セッションには何もせずに `200 OK` を返す。この状態では `POST /refresh` は失敗し、クライアントは RT を用いた再認証ができない。認証トークンの有効期限 (最大 5 分) が切れた時点で認証は自然に終了する。
+認証トークンとリフレッシュトークンの `sub` が一致しない場合、セッションには何もせず、`200 OK` を返す。
+{/* TODO: これは理由 */}
+{/* この場合、`POST /refresh` が失敗し、クライアントは RT を用いた再認証ができない。認証トークンの有効期限 (最大 5 分) が切れた時点で認証は自然に終了する。 */}
 
 {/* { "id": "spec-revoke-at-role", "dependencies": ["spec-refresh-at-role", "spec-refresh-at-iat", "pol-revoke-no-authorization"] } */}
 #### 認証トークンの役割
@@ -855,13 +860,8 @@ POST /recoveryCodes/reissue
 ~~~mermaid
 flowchart TD
     N10([POST /recoveryCodes/reissue 受信])
-    N10 --> N20{AT の署名検証}
-    N20 --> |失敗| ERR1([401 Unauthorized])
-    N20 --> |成功| N25{exp が期限内か}
-    N25 --> |期限切れ| ERR2([401 Unauthorized])
-    N25 --> |期限内| N30{typ が &quot;at+jwt&quot; か}
-    N30 --> |非 AT| ERR3([400 Bad Request])
-    N30 --> |AT| N40[(未使用のリカバリーコードの失効日時を記録)]
+    N10 --> N20[[AT 受け入れ\n(署名, typ, exp)]]
+    N20 --> N40[(未使用のリカバリーコードの失効日時を記録)]
     N40 --> N50{{リカバリーコードを 10 個生成}}
     N50 --> N60[(新しいリカバリーコードのハッシュを RDB に保存)]
     N60 --> N70{{リカバリーコードを応答コンテントに付加}}
@@ -929,13 +929,8 @@ GET /passkeys
 ~~~mermaid
 flowchart TD
     N10([GET /passkeys 受信])
-    N10 --> N20{AT の署名検証}
-    N20 --> |失敗| ERR1([401 Unauthorized])
-    N20 --> |成功| N25{exp が期限内か}
-    N25 --> |期限切れ| ERR2([401 Unauthorized])
-    N25 --> |期限内| N30{typ が &quot;at+jwt&quot; か}
-    N30 --> |非 AT| ERR3([400 Bad Request])
-    N30 --> |AT| N40[(有効なパスキーを subject_id で検索)]
+    N10 --> N20[[AT 受け入れ\n署名, typ, exp]]
+    N20 --> N40[(有効なパスキーを subject_id で検索)]
     N40 --> N50{{一覧を応答コンテントに付加}}
     N50 --> N60([200 OK])
 ~~~
@@ -998,13 +993,8 @@ POST /passkeys/revoke
 ~~~mermaid
 flowchart TD
     N10([POST /passkeys/revoke 受信])
-    N10 --> N20{AT の署名検証}
-    N20 --> |失敗| ERR1([401 Unauthorized])
-    N20 --> |成功| N25{exp が期限内か}
-    N25 --> |期限切れ| ERR2([401 Unauthorized])
-    N25 --> |期限内| N30{typ が &quot;at+jwt&quot; か}
-    N30 --> |非 AT| ERR3([400 Bad Request])
-    N30 --> |AT| N40{subject_id と credential_id に一致する有効なパスキーが存在するか}
+    N10 --> N20[[AT 受け入れ\n署名, typ, exp]]
+    N20 --> N40{subject_id と credential_id に一致する有効なパスキーが存在するか}
     N40 --> |存在しない| ERR4([404 Not Found])
     N40 --> |存在する| N45{当該主体に他の有効なパスキーが存在するか}
     N45 --> |存在しない| ERR5([400 Bad Request])
@@ -1067,35 +1057,9 @@ GET /sessions
 ~~~mermaid
 flowchart TD
     N10([GET /sessions 受信])
-    N10 --> N20
-
-    subgraph SG1[RT 受け入れ]
-        N20{RT の署名検証}
-        N20 --> |失敗| ERR1([403 Forbidden])
-        N20 --> |成功| N22{typ が RT のものか}
-        N22 --> |非 RT| ERR2([403 Forbidden])
-        N22 --> |RT| N25{exp が期限内か}
-        N25 --> |期限切れ| ERR3([403 Forbidden])
-        N25 --> |期限内| N30[/"rt:{sub}:{sid} を取得"/]
-        N30 --> |存在しない| ERR4([403 Forbidden])
-        N30 --> |存在する| N35{提示された RT のハッシュと一致するか}
-        N35 --> |不一致| ERR5([403 Forbidden])
-    end
-
-    N35 --> |一致| N40
-
-    subgraph SG2[AT 受け入れ]
-        N40{AT の署名検証}
-        N40 --> |失敗| ERR6([401 Unauthorized])
-        N40 --> |成功| N45{exp が期限内か}
-        N45 --> |期限切れ| ERR7([401 Unauthorized])
-        N45 --> |期限内| N50{typ が &quot;at+jwt&quot; か}
-        N50 --> |非 AT| ERR8([400 Bad Request])
-        N50 --> |AT| N55{sub が RT と一致するか}
-        N55 --> |不一致| ERR9([401 Unauthorized])
-    end
-
-    N55 --> |一致| N60[/"sessions:{sub} の全フィールドを取得"/]
+    N10 --> N20[[RT 受け入れ\n署名, typ, exp, ハッシュ]]
+    N20 --> N55[[AT 受け入れ\n署名, typ, exp, sub]]
+    N55 --> N60[/"sessions:{sub} の全フィールドを取得"/]
     N60 --> N65[/"各 sid について rt:{sub}:{sid} が存在するものを選ぶ"/]
     N65 --> N70{{一覧を応答コンテントに付加}}
     N70 --> N80([200 OK])
@@ -1163,35 +1127,9 @@ POST /sessions/revoke
 ~~~mermaid
 flowchart TD
     N10([POST /sessions/revoke 受信])
-    N10 --> N20
-
-    subgraph SG1[RT 受け入れ]
-        N20{RT の署名検証}
-        N20 --> |失敗| ERR1([403 Forbidden])
-        N20 --> |成功| N22{typ が RT のものか}
-        N22 --> |非 RT| ERR2([403 Forbidden])
-        N22 --> |RT| N25{exp が期限内か}
-        N25 --> |期限切れ| ERR3([403 Forbidden])
-        N25 --> |期限内| N30[/"rt:{sub}:{sid} を取得"/]
-        N30 --> |存在しない| ERR4([403 Forbidden])
-        N30 --> |存在する| N35{提示された RT のハッシュと一致するか}
-        N35 --> |不一致| ERR5([403 Forbidden])
-    end
-
-    N35 --> |一致| N40
-
-    subgraph SG2[AT 受け入れ]
-        N40{AT の署名検証}
-        N40 --> |失敗| ERR6([401 Unauthorized])
-        N40 --> |成功| N45{exp が期限内か}
-        N45 --> |期限切れ| ERR7([401 Unauthorized])
-        N45 --> |期限内| N50{typ が &quot;at+jwt&quot; か}
-        N50 --> |非 AT| ERR8([400 Bad Request])
-        N50 --> |AT| N55{sub が RT と一致するか}
-        N55 --> |不一致| ERR9([401 Unauthorized])
-    end
-
-    N55 --> |一致| N57{afr が &quot;authenticator&quot; か}
+    N10 --> N20[[RT 受け入れ\n署名, typ, exp, ハッシュ]]
+    N20 --> N40[[AT 受け入れ\n署名, typ, exp, sub]]
+    N40 --> N57{afr が &quot;authenticator&quot; か}
     N57 --> |authenticator でない| ERR10([401 Unauthorized])
     N57 --> |authenticator| N60[/"sessions:{sub} の全フィールドを取得"/]
     N60 --> N65[/"値が credential_id と一致し、sid が現在のものでないセッションの rt と rt_spent を削除"/]
@@ -1253,35 +1191,9 @@ POST /sessions/revokeAll
 ~~~mermaid
 flowchart TD
     N10([POST /sessions/revokeAll 受信])
-    N10 --> N20
-
-    subgraph SG1[RT 受け入れ]
-        N20{RT の署名検証}
-        N20 --> |失敗| ERR1([403 Forbidden])
-        N20 --> |成功| N22{typ が RT のものか}
-        N22 --> |非 RT| ERR2([403 Forbidden])
-        N22 --> |RT| N25{exp が期限内か}
-        N25 --> |期限切れ| ERR3([403 Forbidden])
-        N25 --> |期限内| N30[/"rt:{sub}:{sid} を取得"/]
-        N30 --> |存在しない| ERR4([403 Forbidden])
-        N30 --> |存在する| N35{提示された RT のハッシュと一致するか}
-        N35 --> |不一致| ERR5([403 Forbidden])
-    end
-
-    N35 --> |一致| N40
-
-    subgraph SG2[AT 受け入れ]
-        N40{AT の署名検証}
-        N40 --> |失敗| ERR6([401 Unauthorized])
-        N40 --> |成功| N45{exp が期限内か}
-        N45 --> |期限切れ| ERR7([401 Unauthorized])
-        N45 --> |期限内| N50{typ が &quot;at+jwt&quot; か}
-        N50 --> |非 AT| ERR8([400 Bad Request])
-        N50 --> |AT| N55{sub が RT と一致するか}
-        N55 --> |不一致| ERR9([401 Unauthorized])
-    end
-
-    N55 --> |一致| N57{afr が &quot;authenticator&quot; か}
+    N10 --> N20[[RT 受け入れ\n署名, typ, exp, ハッシュ]]
+    N20 --> N40[[AT 受け入れ\ntyp, exp, sub]]
+    N40 --> N57{afr が &quot;authenticator&quot; か}
     N57 --> |authenticator でない| ERR10([401 Unauthorized])
     N57 --> |authenticator| N60[/"sessions:{sub} の全フィールドを取得"/]
     N60 --> N65[/"sid が現在のものでない全てのセッションの rt と rt_spent を削除"/]
@@ -1390,7 +1302,6 @@ Sorted Set の TTL (`EXPIREAT`) は現行トークンの `exp` よりも 1 分�
     MULTI
     DEL rt:{sub}:{sid}
     DEL rt_spent:{sub}:{sid}
-    EXEC
     ~~~
 
 4.  `ZSCORE` が NULL を返した場合、その RT は「未知の RT」または「既に期限切れで刈り取られた RT」である。セッションは終了させず、当該リクエストだけを `403 Forbidden` で拒否する。
@@ -1487,9 +1398,14 @@ UUID は、RFC 9562 §4 で hex-and-dash 文字列形式で表すことが推奨
 {/* { "id": "pol-passkey-only" } */}
 #### 認証方式はパスキーのみとする
 
-通常の認証方式はパスキー (Discoverable Credentials) のみとする。ID・パスワード認証やその他の認証方式は提供されない。
+通常の認証方式はパスキー (Discoverable Credentials) のみとする。ID・パスワード認証やその他の認証方式は提供しない。
 
 {/* TODO: 認証方式をパスキーのみに限定する理由 */}
+
+{/* { "id": "spec-stateless-token" } */}
+#### 認証トークンはステートレスとする
+
+認証トークンはステートレスとする。認証トークンの状態をサーバー側で管理する機能は提供しない。
 
 {/* { "id": "pol-recovery" } */}
 #### リカバリーコードによる認証
@@ -1732,7 +1648,7 @@ TTL が `exp` と同一の場合、`exp` 間際に試行された正当なリフ
 {/* { "id": "why-rt-spent-expireat-sync", "dependencies": ["spec-rt-spent-add", "why-rt-spent-score-margin"] } */}
 #### `EXPIREAT` をスコアのマージンに追従させる理由
 
-スコアは各リフレッシュを経るごとに単調増加するため、「直近に追加したメンバーのスコア」は常に「現存する全メンバーの最大スコア」と一致し、`EXPIREAT` をそれに同期させておけば、それ以前に追加された (まだ刈り取られていない) メンバーの必要期限を下回ることはない。
+スコアはリフレッシュを経るごとに単調増加するため、「直近に追加したメンバーのスコア」は常に「現存する全メンバーの最大スコア」と一致し、`EXPIREAT` をそれに同期させておけば、それ以前に追加された (まだ刈り取られていない) メンバーの必要期限を下回ることはない。
 
 {/* { "id": "why-reuse-detection-order", "dependencies": ["spec-reuse-detection"] } */}
 #### 有効期限内の使用済み RT のみを再利用として扱う理由
