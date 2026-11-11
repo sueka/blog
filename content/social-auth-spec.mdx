@@ -217,23 +217,23 @@ JWS は JWS Compact Serialization (RFC 7515) の形式とする。
 
 認証トークンとして提示されたトークンが次の条件をすべて満たすとき、かつそのときに限り、そのトークンの `sub` で表される主体が*認証されている*と見做す。この条件を*通常の認証条件*という:
 
-- そのトークンが*正規の公開鍵*によって検証される
+- そのトークンの署名が有効である
 - そのトークンの `alg` が `"none"` でない
 - そのトークンの `alg` がそのトークンの署名アルゴリズムの名称と一致する
 - そのトークンが*認証トークン*である (`typ` が `"at+jwt"` / `"rcat+jwt"` である)
 - そのトークンが期限切れでない (`exp` が現在時刻よりも後である)
 
-*正規の公開鍵*とは次のものをいう:
+トークンの署名は、そのトークンの検証鍵と `alg` のアルゴリズムを用いて、署名の検証に成功したとき、*有効*である。
 
-- 認証サービスでは、*Active スロット*の公開鍵と、削除可能時刻を超えていない全ての *Retired スロット*の公開鍵。
-- 機能サービスでは、*JWKS エンドポイント*から取得した JWK またはそのキャッシュによって表現される公開鍵。
+トークンの*検証鍵*とは、そのトークンの `kid` に対応する公開鍵であり、次のものをいう:
 
-*トークンの署名アルゴリズム*とは、そのトークンの `kid` に対応する公開鍵の意図された署名アルゴリズムであり、次のものをいう:
+- 認証サービスでは、*Active スロット*の鍵と、削除可能時刻を超えていない全ての *Retired スロット*の鍵のうち、公開鍵の JWK Thumbprint がそのトークンの `kid` と一致するものの公開鍵。
+- 機能サービスでは、*JWKS エンドポイント*から取得した JWK のうち、`kid` がそのトークンの `kid` と一致するものによって表現される公開鍵。
 
-- 認証サービスでは、メモリ上に保持する公開鍵と署名アルゴリズムのペアのうち、公開鍵の JWK Thumbprint がそのトークンの `kid` と一致するものの署名アルゴリズム。
+トークンの*署名アルゴリズム*とは、そのトークンの `kid` に対応する公開鍵の意図されたアルゴリズムであり、次のものをいう:
+
+- 認証サービスでは、*Active スロット*の鍵と、削除可能時刻を超えていない全ての *Retired スロット*の鍵のうち、公開鍵の JWK Thumbprint がそのトークンの `kid` と一致するもののアルゴリズム。
 - 機能サービスでは、*JWKS エンドポイント*から取得した JWK のうち、`kid` がそのトークンの `kid` と一致するものの `alg`。
-
-トークンが正規の公開鍵によって*検証される*とは、*トークンの署名アルゴリズム*を用いて、そのトークンの署名が有効であることが確認できることをいう。
 
 {/* { "id": "spec-session-kind", "dependencies": ["pol-recovery", "spec-at", "spec-rcat"] } */}
 機能サービスは、認証トークンの `typ` に応じて、セッション種別を区別する。
@@ -267,19 +267,19 @@ flowchart TD
     N10([提示されたトークン])
     N10 --> N20{署名検証}
     N20 --> |失敗| ERR1([401 Unauthorized])
-    N20 --> |成功| N30{typ が AT/RCAT のものか}
-    N30 --> |非 AT| ERR2([400 Bad Request])
-    N30 --> |AT| N40{exp が期限内か}
-    N40 --> |期限切れ| ERR3([401 Unauthorized])
-    N40 --> |期限内| N45{alg が &quot;none&quot; でないか}
-    N45 --> |&quot;none&quot;| ERR35([401 Unauthorized])
-    N45 --> |&quot;none&quot; でない| N47{alg が妥当な署名アルゴリズムか}
-    N47 --> |妥当でない| ERR37([401])
-    N47 --> |妥当| N50{sub が RT と一致するか}
-    N50 --> |不一致| ERR4([401 Unauthorized])
-    N50 --> |一致| N60{iat が RT 以前か}
-    N60 --> |RT より後| ERR5([400 Bad Request])
-    N60 --> |RT 以前| N70([受け入れ済み AT])
+    N20 --> |成功| N30{alg が &quot;none&quot; でないか}
+    N30 --> |&quot;none&quot;| ERR2([401 Unauthorized])
+    N30 --> |&quot;none&quot; でない| N40{alg が署名アルゴリズムの名称と一致するか}
+    N40 --> |不一致| ERR3([401 Unauthorized])
+    N40 --> |一致| N50{typ が AT/RCAT のものか}
+    N50 --> |非 AT| ERR4([400 Bad Request])
+    N50 --> |AT| N60{exp が期限内か}
+    N60 --> |期限切れ| ERR5([401 Unauthorized])
+    N60 --> |期限内| N70{sub が RT と一致するか}
+    N70 --> |不一致| ERR6([401 Unauthorized])
+    N70 --> |一致| N80{iat が RT 以前か}
+    N80 --> |RT より後| ERR7([400 Bad Request])
+    N80 --> |RT 以前| N90([受け入れ済み AT])
 ~~~
 
 ---
@@ -324,21 +324,23 @@ flowchart TD
     N10([提示されたトークン])
     N10 --> N20{署名検証}
     N20 --> |失敗| ERR1([403 Forbidden])
-    N20 --> |成功| N25{alg が}
-    N25 --> |
-    N30{typ が RT のものか}
-    N30 --> |非 RT| ERR2([403 Forbidden])
-    N30 --> |RT| N40{exp が期限内か}
-    N40 --> |期限切れ| ERR3([403 Forbidden])
-    N40 --> |期限内| N50[/"rt:{sub}:{sid} を取得"/]
-    N50 --> |存在しない| ERR4([403 Forbidden])
-    N50 --> |存在する| N60{提示された RT のハッシュと一致するか}
-    N60 --> |不一致| N70{{"rt_spent:{sub}:{sid} から期限切れエントリを削除"}}
-    N70 --> N80{"提示された RT のハッシュが rt_spent:{sub}:{sid} に含まれないか"}
-    N80 --> |含まれる| N90[/"rt:{sub}:{sid} と rt_spent:{sub}:{sid} を削除"/]
-    N90 --> ERR5([403 Forbidden])
-    N80 --> |含まれない| ERR6([403 Forbidden])
-    N60 --> |一致| N100([受け入れ済み RT])
+    N20 --> |成功| N30{alg が &quot;none&quot; でないか}
+    N30 --> |&quot;none&quot;| ERR2([403 Forbidden])
+    N30 --> |&quot;none&quot; でない| N40{alg が署名アルゴリズムの名称と一致するか}
+    N40 --> |不一致| ERR3([403 Forbidden])
+    N40 --> |一致| N50{typ が RT のものか}
+    N50 --> |非 RT| ERR4([403 Forbidden])
+    N50 --> |RT| N60{exp が期限内か}
+    N60 --> |期限切れ| ERR5([403 Forbidden])
+    N60 --> |期限内| N70[/"rt:{sub}:{sid} を取得"/]
+    N70 --> |存在しない| ERR6([403 Forbidden])
+    N70 --> |存在する| N80{提示された RT のハッシュと一致するか}
+    N80 --> |不一致| N90{{"rt_spent:{sub}:{sid} から期限切れエントリを削除"}}
+    N90 --> N100{"提示された RT のハッシュが rt_spent:{sub}:{sid} に含まれないか"}
+    N100 --> |含まれる| N110[/"rt:{sub}:{sid} と rt_spent:{sub}:{sid} を削除"/]
+    N110 --> ERR7([403 Forbidden])
+    N100 --> |含まれない| ERR8([403 Forbidden])
+    N80 --> |一致| N120([受け入れ済み RT])
 ~~~
 
 
@@ -349,12 +351,12 @@ flowchart TD
 
 認証サービスはメモリ上に次の鍵を保持する:
 
-| スロット名  | 説明                                                                                                     |
-| ----------- | -------------------------------------------------------------------------------------------------------- |
-| **Active**  | 現在トークンの署名・検証に使用している鍵。秘密鍵と公開鍵を保持する。同時に 1 組存在する。                |
-| **Retired** | 過去トークンの署名に使用していた鍵。公開鍵と削除可能時刻のペアのリストを保持する。同時に複数存在しうる。 |
+| スロット名  | 説明                                                                                                                       |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Active**  | 現在トークンの署名・検証に使用している鍵。秘密鍵、公開鍵、アルゴリズムのトリプルを保持する。同時に 1 組存在する。          |
+| **Retired** | 過去トークンの署名に使用していた鍵。公開鍵、アルゴリズム、削除可能時刻のトリプルのリストを保持する。同時に複数存在しうる。 |
 
-メモリ上の鍵はそれぞれ、鍵の種類 (`kty`/`crv`) に加えて、その鍵とともに生成時に明示的に選択・宣言された署名アルゴリズムを保持する。署名アルゴリズムは鍵の種類から自動的に導出しない。鍵の種類と署名アルゴリズムの組は、JWKS では JWK の `kty`/`crv` と `alg` として表れる。
+アルゴリズムは鍵の種類から自動的に導出せず、明示的に指定する。
 
 移行期間中は、Active・Retired の各スロットに、異なる鍵の種類 (たとえば EC と OKP) の鍵が混在しうる。
 
@@ -641,8 +643,8 @@ POST /refresh
 ~~~mermaid
 flowchart TD
     N10([POST /refresh 受信])
-    N10 --> N20[[RT 受け入れ\n(署名, typ, exp, ハッシュ, 再利用検知)]]
-    N20 --> N90[[AT/RCAT 受け入れ\n(署名, typ, sub, iat)]]
+    N10 --> N20[["RT 受け入れ\n(署名, typ, exp, ハッシュ, 再利用検知)"]]
+    N20 --> N90[["AT/RCAT 受け入れ\n(署名, typ, sub, iat)"]]
     N90 --> N115{typ が AT のものか RCAT のものか}
     N115 --> |AT| N120{主体が凍結中か}
     N120 --> |凍結中| ERR11([403 Forbidden])
@@ -744,8 +746,8 @@ POST /revoke
 ~~~mermaid
 flowchart TD
     N10([POST /revoke 受信])
-    N10 --> N20[[RT 受け入れ\n署名, ハッシュ\nハッシュ不在は 200]]
-    N20 --> N50[[AT/RCAT 受け入れ\n(署名, typ, sub, sub 不一致は 200)]]
+    N10 --> N20[["RT 受け入れ\n(署名, ハッシュ; ハッシュ不在は 200)"]]
+    N20 --> N50[["AT/RCAT 受け入れ\n(署名, typ, sub; sub 不一致は 200)"]]
     N50 --> N65{"rt:{sub}:{sid} が提示された RT のハッシュと一致していたか"}
     N65 --> |一致| N80[/"rt:{sub}:{sid} と rt_spent:{sub}:{sid} を削除"/]
     N65 --> |不一致| N85([200 OK])
@@ -863,7 +865,7 @@ POST /recoveryCodes/reissue
 ~~~mermaid
 flowchart TD
     N10([POST /recoveryCodes/reissue 受信])
-    N10 --> N20[[AT 受け入れ\n(署名, typ, exp)]]
+    N10 --> N20[["AT 受け入れ\n(署名, typ, exp)"]]
     N20 --> N40[(未使用のリカバリーコードの失効日時を記録)]
     N40 --> N50{{リカバリーコードを 10 個生成}}
     N50 --> N60[(新しいリカバリーコードのハッシュを RDB に保存)]
@@ -932,7 +934,7 @@ GET /passkeys
 ~~~mermaid
 flowchart TD
     N10([GET /passkeys 受信])
-    N10 --> N20[[AT 受け入れ\n署名, typ, exp]]
+    N10 --> N20[["AT 受け入れ\n(署名, typ, exp)"]]
     N20 --> N40[(有効なパスキーを subject_id で検索)]
     N40 --> N50{{一覧を応答コンテントに付加}}
     N50 --> N60([200 OK])
@@ -996,7 +998,7 @@ POST /passkeys/revoke
 ~~~mermaid
 flowchart TD
     N10([POST /passkeys/revoke 受信])
-    N10 --> N20[[AT 受け入れ\n署名, typ, exp]]
+    N10 --> N20[["AT 受け入れ\n(署名, typ, exp)"]]
     N20 --> N40{subject_id と credential_id に一致する有効なパスキーが存在するか}
     N40 --> |存在しない| ERR4([404 Not Found])
     N40 --> |存在する| N45{当該主体に他の有効なパスキーが存在するか}
@@ -1060,8 +1062,8 @@ GET /sessions
 ~~~mermaid
 flowchart TD
     N10([GET /sessions 受信])
-    N10 --> N20[[RT 受け入れ\n署名, typ, exp, ハッシュ]]
-    N20 --> N55[[AT 受け入れ\n署名, typ, exp, sub]]
+    N10 --> N20[["RT 受け入れ\n(署名, typ, exp, ハッシュ)"]]
+    N20 --> N55[["AT 受け入れ\n(署名, typ, exp, sub)"]]
     N55 --> N60[/"sessions:{sub} の全フィールドを取得"/]
     N60 --> N65[/"各 sid について rt:{sub}:{sid} が存在するものを選ぶ"/]
     N65 --> N70{{一覧を応答コンテントに付加}}
@@ -1130,8 +1132,8 @@ POST /sessions/revoke
 ~~~mermaid
 flowchart TD
     N10([POST /sessions/revoke 受信])
-    N10 --> N20[[RT 受け入れ\n署名, typ, exp, ハッシュ]]
-    N20 --> N40[[AT 受け入れ\n署名, typ, exp, sub]]
+    N10 --> N20[["RT 受け入れ\n(署名, typ, exp, ハッシュ)"]]
+    N20 --> N40[["AT 受け入れ\n(署名, typ, exp, sub)"]]
     N40 --> N57{afr が &quot;authenticator&quot; か}
     N57 --> |authenticator でない| ERR10([401 Unauthorized])
     N57 --> |authenticator| N60[/"sessions:{sub} の全フィールドを取得"/]
@@ -1194,8 +1196,8 @@ POST /sessions/revokeAll
 ~~~mermaid
 flowchart TD
     N10([POST /sessions/revokeAll 受信])
-    N10 --> N20[[RT 受け入れ\n署名, typ, exp, ハッシュ]]
-    N20 --> N40[[AT 受け入れ\ntyp, exp, sub]]
+    N10 --> N20[["RT 受け入れ\n(署名, typ, exp, ハッシュ)"]]
+    N20 --> N40[["AT 受け入れ\n(署名, typ, exp, sub)"]]
     N40 --> N57{afr が &quot;authenticator&quot; か}
     N57 --> |authenticator でない| ERR10([401 Unauthorized])
     N57 --> |authenticator| N60[/"sessions:{sub} の全フィールドを取得"/]
@@ -1506,11 +1508,11 @@ UUID は、RFC 9562 §4 で hex-and-dash 文字列形式で表すことが推奨
 メモリに保存すると、ブラウザーの再読み込みによって認証トークンが失われ、*リフレッシュ*および*失効*が行えなくなる。
 
 {/* { "id": "why-alg-not-from-header", "dependencies": ["spec-auth-condition"] } */}
-#### 署名アルゴリズムをヘッダーの `alg` から選択してはならない理由
+#### 検証に用いるアルゴリズムをヘッダーの `alg` から選択してはならない理由
 
 これに反すると、鍵の種類によっては Alg Confusion が成立しうる。
 
-{/* TODO: 署名アルゴリズムを鍵の種類から自動導出せず、生成時に明示的に宣言する理由 (spec-key-slots) */}
+{/* TODO: アルゴリズムを鍵の種類から自動導出せず、生成時に明示的に宣言する理由 (spec-key-slots) */}
 
 {/* { "id": "why-host-prefix", "dependencies": ["spec-rt-delivery", "spec-same-site"] } */}
 #### リフレッシュトークンの Cookie に `__Host-` を付ける理由
