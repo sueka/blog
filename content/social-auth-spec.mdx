@@ -244,7 +244,6 @@ JWS は JWS Compact Serialization (RFC 7515) の形式とする。
 {/* { "id": "spec-verifier-requirements", "dependencies": ["spec-auth-condition", "spec-jwks-endpoint"] } */}
 機能サービスは、署名検証の実装にあたっては、次の要件を満たさなければならない:
 
-- 検証に使用する鍵は、ヘッダーの `kid` と JWKS の各鍵エントリの `kid` を照合して特定する
 - 未知の `kid` を含むトークンを受信した場合、キャッシュの状態によらず、JWKS エンドポイントを即時に再取得する
 - JWKS のキャッシュを、`Cache-Control` の `max-age` を超えて使用しない
 - JWKS を取得したときは、取得した JWK Set でキャッシュを置き換える (含まれない鍵は、キャッシュから削除する)
