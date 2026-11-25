@@ -183,7 +183,7 @@ JWS は JWS Compact Serialization (RFC 7515) の形式とする。
 {/* { "id": "spec-at", "dependencies": ["spec-auth-token"] } */}
 #### 4.1.1 通常の認証トークン
 
-ログインセッションで使用する認証トークン。単に AT (Authentication Token) とも表記する。
+ログインセッションで用いる認証トークン。単に AT (Authentication Token) とも表記する。
 
 ##### ヘッダー
 
@@ -194,7 +194,7 @@ JWS は JWS Compact Serialization (RFC 7515) の形式とする。
 {/* { "id": "spec-rcat", "dependencies": ["spec-auth-token", "pol-recovery"] } */}
 #### 4.1.2 リカバリー認証トークン
 
-リカバリーセッションで使用する認証トークン。RCAT (Recovery-Context Authentication Token) とも表記する。通常の認証トークンとほとんど同じヘッダーとペイロードを持つが、`typ` の値が異なる。
+リカバリーセッションで用いる認証トークン。RCAT (Recovery-Context Authentication Token) とも表記する。通常の認証トークンとほとんど同じヘッダーとペイロードを持つが、`typ` の値が異なる。
 
 ##### ヘッダー
 
@@ -228,12 +228,12 @@ JWS は JWS Compact Serialization (RFC 7515) の形式とする。
 トークンの*検証鍵*とは、そのトークンの `kid` に対応する公開鍵であり、次のものをいう:
 
 - 認証サービスでは、*Active スロット*の公開鍵と、削除可能日時を超えていない全ての *Retired スロット*の公開鍵のうち、JWK Thumbprint がそのトークンの `kid` と一致するもの。
-- 機能サービスでは、*JWKS エンドポイント*から取得した JWK のうち、`kid` がそのトークンの `kid` と一致するものによって表現される公開鍵。そのような JWK が見つからない場合、機能サービスは、JWKS キャッシュの状態によらず、JWKS エンドポイントを即時再取得する。
+- 機能サービスでは、*JWKS エンドポイント*から取得した JWK のうち、`kid` がそのトークンの `kid` と一致するものによって表現される公開鍵。そのような JWK が JWKS キャッシュに見つからない場合、機能サービスは、JWKS キャッシュの状態によらず、一度だけ、JWKS エンドポイントを再取得する。
 
 トークンの*署名アルゴリズム*とは、そのトークンの `kid` に対応する公開鍵の意図されたアルゴリズムであり、次のものをいう:
 
 - 認証サービスでは、*Active スロット*の鍵と、削除可能日時を超えていない全ての *Retired スロット*の鍵のうち、公開鍵の JWK Thumbprint がそのトークンの `kid` と一致するもののアルゴリズム。
-- 機能サービスでは、*JWKS エンドポイント*から取得した JWK のうち、`kid` がそのトークンの `kid` と一致するものの `alg`。そのような JWK が見つからない場合、機能サービスは、JWKS キャッシュの状態によらず、JWKS エンドポイントを即時再取得する。
+- 機能サービスでは、*JWKS エンドポイント*から取得した JWK のうち、`kid` がそのトークンの `kid` と一致するものの `alg`。そのような JWK が JWKS キャッシュに見つからない場合、機能サービスは、JWKS キャッシュの状態によらず、一度だけ、JWKS エンドポイントを再取得する。
 
 {/* { "id": "spec-recovery-auth", "dependencies": ["spec-auth-condition", "pol-recovery", "spec-rcat"] } */}
 ##### リカバリー認証
@@ -595,7 +595,7 @@ flowchart TD
 GET /.well-known/jwks.json
 ~~~
 
-トークンの署名検証に使用する公開鍵の一覧を返す。
+トークンの署名鍵の公開鍵の一覧を返す。
 
 {/* { "id": "spec-jwks-response", "dependencies": ["spec-token-kinds"] } */}
 #### レスポンス
@@ -604,7 +604,7 @@ GET /.well-known/jwks.json
 
 `Cache-Control` の値は設定可能とする。`Cache-Control` は `max-age` と `must-revalidate` を含む。`max-age` の値はリフレッシュトークンの有効期限を超えないものとする。
 
-応答コンテントは、*Active スロット*の公開鍵と、削除可能日時を超えていない全ての *Retired スロット*の公開鍵を含む、JWK Set とする。同じ鍵が重複して含まれていてもよい。各 JWK は `alg` パラメーターと `kid` パラメーターを含む。`kid` は JWK Thumbprint (base64url) である。
+応答コンテントは、*Active スロット*の公開鍵と、削除可能日時を超えていない全ての *Retired スロット*の公開鍵を含む JWK Set とする。同じ鍵が重複して含まれていてもよい。各 JWK は `alg` パラメーターと `kid` パラメーターを含む。`kid` は JWK Thumbprint (base64url) である。
 
 ~~~json
 {
@@ -625,21 +625,9 @@ GET /.well-known/jwks.json
 {/* { "id": "spec-jwks-cache", "dependencies": ["spec-auth-condition", "spec-jwks-endpoint"] } */}
 #### キャッシュ
 
-鍵は、その鍵を最後に含んでいたレスポンスの取得から最大寿命を超えて、署名の検証に使用してはならない。
+JWKS エンドポイントから取得した JWK は、その JWK を最後に含んでいたレスポンスの最大寿命を超えて、トークンの署名の検証に利用してはならない。
 
-JWKS エンドポイントを取得したときは、取得した JWK Set に含まれない鍵を、キャッシュから削除することが推奨される。
-
-最大寿命を超えて JWKS エンドポイントに到達できない間、認証トークンの署名を検証できない。
-
-#### キャッシュ
-
-*JWKS エンドポイント*から取得した JWK Set のキャッシュは、次の
-
-- 未知の `kid` を持つトークンを受信した場合、*JWKS エンドポイント*を再取得する
-- JWKS のキャッシュを最大寿命を超えて使用しない
-- JWKS を取得したときは、取得した JWK Set でキャッシュを置き換える (含まれない鍵は、キャッシュから削除する)
-
-最大寿命を超えて JWKS エンドポイントに到達できない間、機能サービスは、認証トークンの署名を検証できない。
+JWKS エンドポイントから JWK Set を取得したとき、取得した JWK Set に含まれない JWK は、JWKS キャッシュから削除することが推奨される。
 
 {/* { "id": "spec-refresh", "dependencies": ["spec-stateless-token", "spec-refresh-token", "spec-auth-token", "spec-frozen-subject", "spec-kvs-session-keys", "spec-sessions-index", "spec-reuse-detection", "spec-refresh-swap", "spec-sessions-index-ttl"] } */}
 ### 6.6 リフレッシュエンドポイント
@@ -776,7 +764,7 @@ flowchart TD
 {/* { "id": "spec-revoke-idempotency", "dependencies": ["spec-revoke", "spec-audit-events"] } */}
 #### 冪等性
 
-`rt:{sub}:{sid}` が既に削除されている場合、または提示されたリフレッシュトークンのハッシュが現在の値と一致しない場合、`403 Forbidden` ではなく `200 OK` を返す。これにより、同一のリフレッシュトークンを用いた複数回の `POST /revoke` 呼び出しは冪等となる。ただし、実際に `rt:{sub}:{sid}` を削除した場合と、削除対象が存在しなかった場合とは、監査ログ上は区別して記録する ([8.1 記録対象イベント](#81-記録対象イベント) を参照)。
+`rt:{sub}:{sid}` が既に削除されている場合、または提示されたリフレッシュトークンのハッシュが現在の値と一致しない場合、`403 Forbidden` ではなく `200 OK` を返す。これにより、同一のリフレッシュトークンを用いた複数回の*リフレッシュトークンの失効* (`POST /revoke`) 呼び出しは冪等となる。ただし、実際に `rt:{sub}:{sid}` を削除した場合と、削除対象が存在しなかった場合とは、監査ログ上は区別して記録する ([8.1 記録対象イベント](#81-記録対象イベント) を参照)。
 
 #### レスポンス
 
@@ -1481,7 +1469,7 @@ UUID は、RFC 9562 §4 で hex-and-dash 文字列形式で表すことが推奨
 同一サイトでなければ、リフレッシュトークン (`SameSite=Strict` Cookie) が付加されず、*リフレッシュ* (`POST /refresh`) や*失効* (`POST /revoke`) が機能しなくなる。
 
 {/* { "id": "why-code-hash-sha256", "dependencies": ["spec-recovery-codes-table", "spec-recovery-code-format"] */}
-#### `code_hash` に SHA-256 を使用する理由
+#### `code_hash` に SHA-256 を用いる理由
 
 リカバリーコードは 128 ビット以上のエントロピーを持つため、仮に DB がダンプされたとしても、総当たり攻撃には平均 2¹²⁷ 回の試行を要する。これは現在最速の ASIC (Antminer S23 Hyd 3U; 1160 TH/S) を 100 万台並列しても、平均約 46 億 5000 万年かかる計算となる。
 
